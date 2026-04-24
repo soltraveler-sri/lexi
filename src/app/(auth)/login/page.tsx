@@ -24,7 +24,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-bg px-6">
       <section className="w-full max-w-md rounded-lg border border-border bg-surface p-8 shadow-lg">
         <div className="mb-8 text-center">
-          <h1 className="font-display text-5xl font-semibold text-text">Forge</h1>
+          <h1 className="font-display text-5xl font-semibold text-text">lexi</h1>
           <p className="mt-3 text-sm leading-6 text-text-muted">
             A private writing workspace for line-by-line rewrites and a growing voice
             profile.

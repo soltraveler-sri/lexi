@@ -67,7 +67,7 @@ export function Sidebar({
       <div className="p-5">
         <Link className="mb-6 flex items-center gap-2" href="/workspace">
           <span className="font-display text-[28px] font-semibold leading-none">
-            Forge
+            lexi
           </span>
           <span className="mt-1 h-2 w-2 rounded-full bg-accent" />
         </Link>

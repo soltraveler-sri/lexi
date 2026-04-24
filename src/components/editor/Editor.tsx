@@ -290,7 +290,7 @@ function EditorSurface({
             value={title}
           />
         </div>
-        <section className={cn("forge-editor", session && "select-none")}>
+        <section className={cn("lexi-editor", session && "select-none")}>
           {editor ? <BubbleMenu editor={editor} /> : null}
           <EditorContent editor={editor} />
         </section>

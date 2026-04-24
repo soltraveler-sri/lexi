@@ -62,7 +62,7 @@ select {
   outline: none;
 }
 
-.forge-editor .ProseMirror {
+.lexi-editor .ProseMirror {
   min-height: 50vh;
   max-width: 680px;
   padding-bottom: 120px;
@@ -71,45 +71,45 @@ select {
   line-height: 1.7;
 }
 
-.forge-editor .ProseMirror p {
+.lexi-editor .ProseMirror p {
   margin: 1.1em 0;
 }
 
-.forge-editor .ProseMirror h1,
-.forge-editor .ProseMirror h2,
-.forge-editor .ProseMirror h3 {
+.lexi-editor .ProseMirror h1,
+.lexi-editor .ProseMirror h2,
+.lexi-editor .ProseMirror h3 {
   margin: 1.6em 0 0.6em;
   font-family: var(--font-display);
   font-weight: 600;
   line-height: 1.18;
 }
 
-.forge-editor .ProseMirror h1 {
+.lexi-editor .ProseMirror h1 {
   font-size: 36px;
 }
 
-.forge-editor .ProseMirror h2 {
+.lexi-editor .ProseMirror h2 {
   font-size: 28px;
 }
 
-.forge-editor .ProseMirror h3 {
+.lexi-editor .ProseMirror h3 {
   font-size: 22px;
 }
 
-.forge-editor .ProseMirror blockquote {
+.lexi-editor .ProseMirror blockquote {
   margin: 1.2em 0;
   border-left: 3px solid var(--color-border-strong);
   padding-left: 18px;
   color: var(--color-text-muted);
 }
 
-.forge-editor .ProseMirror ul,
-.forge-editor .ProseMirror ol {
+.lexi-editor .ProseMirror ul,
+.lexi-editor .ProseMirror ol {
   margin: 1.1em 0;
   padding-left: 1.35em;
 }
 
-.forge-editor .ProseMirror code {
+.lexi-editor .ProseMirror code {
   border-radius: 6px;
   background: var(--color-surface-sunken);
   padding: 0.1em 0.3em;
@@ -117,13 +117,13 @@ select {
   font-size: 0.88em;
 }
 
-.forge-editor .ProseMirror a {
+.lexi-editor .ProseMirror a {
   color: var(--color-accent-hover);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.forge-editor .ProseMirror-focused .ProseMirror-selectednode {
+.lexi-editor .ProseMirror-focused .ProseMirror-selectednode {
   outline: 2px solid var(--color-accent);
 }
 

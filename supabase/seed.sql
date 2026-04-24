@@ -9,7 +9,7 @@ declare
   seed_doc uuid := '00000000-0000-0000-0000-000000000201';
 begin
   if not exists (select 1 from auth.users where id = seed_user) then
-    raise notice 'Skipping Forge seed rows because seed_user % is not present in auth.users. Replace seed_user with a real local user id and rerun.', seed_user;
+    raise notice 'Skipping lexi seed rows because seed_user % is not present in auth.users. Replace seed_user with a real local user id and rerun.', seed_user;
     return;
   end if;
 
@@ -29,7 +29,7 @@ begin
     seed_project,
     seed_user,
     'Drafts',
-    'Seed project for Forge/Lexi local development.',
+    'Seed project for lexi local development.',
     0
   )
   on conflict (id) do nothing;

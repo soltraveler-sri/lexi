@@ -84,7 +84,7 @@ export async function GET() {
   archive.append(jsonl(brainDumps), { name: "brain_dumps.jsonl" });
   archive.append(
     [
-      "# Forge training export",
+      "# lexi training export",
       "",
       "works.jsonl: documents marked for style profile inclusion.",
       "edits.jsonl: captured rewrite and AI suggestion events.",
@@ -100,7 +100,7 @@ export async function GET() {
   return new Response(Readable.toWeb(stream) as ReadableStream, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="forge-training-export.zip"',
+      "Content-Disposition": 'attachment; filename="lexi-training-export.zip"',
     },
   });
 }

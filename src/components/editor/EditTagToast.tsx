@@ -31,14 +31,14 @@ export function EditTagToast({
     setNote("");
     interactedRef.current = false;
     setShowHideLink(
-      Number(window.localStorage.getItem("forge-toast-dismisses") ?? "0") >= 3,
+      Number(window.localStorage.getItem("lexi-toast-dismisses") ?? "0") >= 3,
     );
 
     const timeout = window.setTimeout(() => {
       if (!interactedRef.current) {
         const count =
-          Number(window.localStorage.getItem("forge-toast-dismisses") ?? "0") + 1;
-        window.localStorage.setItem("forge-toast-dismisses", String(count));
+          Number(window.localStorage.getItem("lexi-toast-dismisses") ?? "0") + 1;
+        window.localStorage.setItem("lexi-toast-dismisses", String(count));
       }
       onDismiss();
     }, 8000);
@@ -63,7 +63,7 @@ export function EditTagToast({
 
   async function patchEvent(nextTags: string[], nextNote = note) {
     interactedRef.current = true;
-    window.localStorage.setItem("forge-toast-dismisses", "0");
+    window.localStorage.setItem("lexi-toast-dismisses", "0");
 
     await fetch(`/api/style-events/${eventId}`, {
       method: "PATCH",

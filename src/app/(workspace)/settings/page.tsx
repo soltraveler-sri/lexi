@@ -62,7 +62,7 @@ export default async function SettingsPage() {
           </Section>
           <Section title="About">
             <div className="space-y-1 text-sm text-text-muted">
-              <p>Lexi / Forge MVP 0.1.0</p>
+              <p>lexi MVP 0.1.0</p>
               <a
                 className="text-accent-hover hover:underline"
                 href="https://github.com/soltraveler-sri/lexi/blob/main/README.md"

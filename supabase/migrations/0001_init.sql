@@ -216,7 +216,7 @@ begin
 end;
 $$;
 
-create trigger on_auth_user_created_forge_defaults
+create trigger on_auth_user_created_lexi_defaults
 after insert on auth.users
 for each row execute function public.handle_new_user_defaults();
 

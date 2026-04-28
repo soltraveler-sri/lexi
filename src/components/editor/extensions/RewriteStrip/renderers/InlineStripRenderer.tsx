@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,12 +10,21 @@ import { useRewriteStrip } from "@/components/editor/extensions/RewriteStrip/con
 import { cn } from "@/lib/utils";
 
 function ActionRow() {
-  const { session, commit, cancel, startFromOriginal, setAutoAdvance } =
-    useRewriteStrip();
+  const {
+    session,
+    aiAvailable,
+    commit,
+    cancel,
+    startFromOriginal,
+    setAutoAdvance,
+    requestAiSuggestion,
+  } = useRewriteStrip();
 
   if (!session) {
     return null;
   }
+
+  const aiLoading = session.aiStatus === "loading";
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 font-ui text-sm">
@@ -24,6 +34,22 @@ function ActionRow() {
       <Button onClick={() => void commit(true)} size="sm" variant="secondary">
         Replace & Next <kbd className="rounded-[4px] bg-surface-sunken px-1.5">⇧⏎</kbd>
       </Button>
+      {aiAvailable ? (
+        <Button
+          disabled={aiLoading}
+          onClick={() => void requestAiSuggestion()}
+          size="sm"
+          title="Draft a suggestion using your voice profile"
+          variant="secondary"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          {aiLoading
+            ? "Drafting…"
+            : session.aiSuggestion
+              ? "Regenerate"
+              : "Suggest with AI"}
+        </Button>
+      ) : null}
       <label className="ml-1 flex items-center gap-2 text-text-muted">
         <Checkbox
           checked={session.autoAdvance}
@@ -41,6 +67,9 @@ function ActionRow() {
       <Button onClick={cancel} size="sm" variant="ghost">
         Cancel <kbd className="rounded-[4px] bg-surface-sunken px-1.5">⎋</kbd>
       </Button>
+      {session.aiError ? (
+        <p className="basis-full text-xs text-red-600">{session.aiError}</p>
+      ) : null}
     </div>
   );
 }

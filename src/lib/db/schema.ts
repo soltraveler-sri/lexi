@@ -305,6 +305,7 @@ export const usageEvents = pgTable(
       .notNull()
       .references(() => authUsers.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
+    ownership: credentialOwnershipEnum("ownership").notNull().default("user"),
     model: text("model").notNull(),
     callTier: callTierEnum("call_tier").notNull(),
     inputTokens: integer("input_tokens").notNull().default(0),
@@ -331,6 +332,11 @@ export const usageEvents = pgTable(
     userProviderCreatedIdx: index("usage_events_user_provider_created_idx").on(
       table.userId,
       table.provider,
+      table.createdAt,
+    ),
+    userOwnershipCreatedIdx: index("usage_events_user_ownership_created_idx").on(
+      table.userId,
+      table.ownership,
       table.createdAt,
     ),
   }),

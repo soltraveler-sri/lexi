@@ -11,6 +11,7 @@ export interface CommandContext {
   runRewrite: () => void;
   markAsExemplar: () => void;
   exportMarkdown: () => void;
+  downloadDocx: () => void;
   createDocument: () => void;
   renameDocument: () => void;
   deleteDocument: () => void;

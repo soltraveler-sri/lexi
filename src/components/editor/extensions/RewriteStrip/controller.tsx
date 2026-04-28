@@ -16,6 +16,7 @@ import { setRewriteStripPluginState } from "@/components/editor/extensions/Rewri
 import type { RendererMode, DocumentType, VoiceContext } from "@/types";
 
 type RewriteStatus = "idle" | "drafting" | "committing" | "done" | "cancelled";
+type AiStatus = "idle" | "loading" | "ready" | "error";
 
 interface RewriteSession {
   id: string;
@@ -31,11 +32,16 @@ interface RewriteSession {
   rect: DOMRect | null;
   shake: boolean;
   fullDocumentText: string;
+  aiStatus: AiStatus;
+  aiError: string | null;
+  aiSuggestion: string | null;
+  aiProvider: string | null;
 }
 
 interface RewriteStripContextValue {
   session: RewriteSession | null;
   lastEventId: string | null;
+  aiAvailable: boolean;
   beginFromSelection: () => void;
   commit: (advance?: boolean) => Promise<void>;
   cancel: () => void;
@@ -43,6 +49,7 @@ interface RewriteStripContextValue {
   startFromOriginal: () => void;
   setAutoAdvance: (value: boolean) => void;
   clearLastEventId: () => void;
+  requestAiSuggestion: () => Promise<void>;
 }
 
 const RewriteStripContext = createContext<RewriteStripContextValue | null>(null);
@@ -138,7 +145,27 @@ export function RewriteStripProvider({
 }) {
   const [session, setSession] = useState<RewriteSession | null>(null);
   const [lastEventId, setLastEventId] = useState<string | null>(null);
+  const [aiAvailable, setAiAvailable] = useState(false);
   const sessionRef = useRef<RewriteSession | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch("/api/ai/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { available?: boolean } | null) => {
+        if (!cancelled && payload?.available) {
+          setAiAvailable(true);
+        }
+      })
+      .catch(() => {
+        // Silent: the AI button just stays hidden if status can't be fetched.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -242,6 +269,10 @@ export function RewriteStripProvider({
       rect,
       shake: false,
       fullDocumentText,
+      aiStatus: "idle",
+      aiError: null,
+      aiSuggestion: null,
+      aiProvider: null,
     };
 
     if (rendererMode === "inline_strip") {
@@ -279,6 +310,75 @@ export function RewriteStripProvider({
   const setAutoAdvance = useCallback((value: boolean) => {
     setSession((current) => (current ? { ...current, autoAdvance: value } : current));
   }, []);
+
+  const requestAiSuggestion = useCallback(async () => {
+    const current = sessionRef.current;
+
+    if (!current) {
+      return;
+    }
+
+    setSession((existing) =>
+      existing ? { ...existing, aiStatus: "loading", aiError: null } : existing,
+    );
+
+    try {
+      const response = await fetch("/api/ai/rewrite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId,
+          beforeText: current.originalText,
+          surroundingBefore: current.fullDocumentText.slice(
+            Math.max(0, current.range.from - 1500),
+            current.range.from,
+          ),
+          surroundingAfter: current.fullDocumentText.slice(
+            current.range.to,
+            current.range.to + 1500,
+          ),
+          documentType,
+          voiceContext,
+          tier: "heavy",
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        suggestion?: string;
+        provider?: string;
+        error?: string;
+        message?: string;
+      } | null;
+
+      if (!response.ok || !payload?.suggestion) {
+        const message =
+          payload?.message || payload?.error || `Request failed (${response.status}).`;
+        setSession((existing) =>
+          existing ? { ...existing, aiStatus: "error", aiError: message } : existing,
+        );
+        return;
+      }
+
+      const suggestion = payload.suggestion.trim();
+      setSession((existing) =>
+        existing
+          ? {
+              ...existing,
+              aiStatus: "ready",
+              aiError: null,
+              aiSuggestion: suggestion,
+              aiProvider: payload.provider ?? null,
+              input: suggestion,
+            }
+          : existing,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Network error";
+      setSession((existing) =>
+        existing ? { ...existing, aiStatus: "error", aiError: message } : existing,
+      );
+    }
+  }, [documentId, documentType, voiceContext]);
 
   const commit = useCallback(
     async (advance = false) => {
@@ -320,12 +420,19 @@ export function RewriteStripProvider({
         )
         .run();
 
+      const usedAi = Boolean(current.aiSuggestion);
+      const eventType = usedAi
+        ? current.aiSuggestion === replacementText
+          ? "ai_suggestion_accepted"
+          : "ai_suggestion_edited"
+        : "rewrite";
+
       const response = await fetch("/api/style-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentId,
-          eventType: "rewrite",
+          eventType,
           beforeText: current.originalText,
           afterText: replacementText,
           surroundingBefore: current.fullDocumentText.slice(
@@ -338,6 +445,7 @@ export function RewriteStripProvider({
           ),
           documentType,
           voiceContext,
+          aiProvider: current.aiProvider,
           timeSpentMs: Date.now() - current.openedAt,
         }),
       });
@@ -393,6 +501,7 @@ export function RewriteStripProvider({
     () => ({
       session,
       lastEventId,
+      aiAvailable,
       beginFromSelection,
       commit,
       cancel,
@@ -400,12 +509,15 @@ export function RewriteStripProvider({
       startFromOriginal,
       setAutoAdvance,
       clearLastEventId: () => setLastEventId(null),
+      requestAiSuggestion,
     }),
     [
+      aiAvailable,
       beginFromSelection,
       cancel,
       commit,
       lastEventId,
+      requestAiSuggestion,
       session,
       setAutoAdvance,
       startFromOriginal,

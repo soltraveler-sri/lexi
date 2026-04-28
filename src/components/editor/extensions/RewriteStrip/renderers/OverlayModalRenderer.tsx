@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,9 +9,18 @@ import { useRewriteStrip } from "@/components/editor/extensions/RewriteStrip/con
 import { cn } from "@/lib/utils";
 
 export function OverlayModalRenderer() {
-  const { session, updateInput, commit, cancel, startFromOriginal, setAutoAdvance } =
-    useRewriteStrip();
+  const {
+    session,
+    aiAvailable,
+    updateInput,
+    commit,
+    cancel,
+    startFromOriginal,
+    setAutoAdvance,
+    requestAiSuggestion,
+  } = useRewriteStrip();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const aiLoading = session?.aiStatus === "loading";
 
   useEffect(() => {
     if (session?.mode === "overlay_modal") {
@@ -44,6 +54,21 @@ export function OverlayModalRenderer() {
             Replace & Next{" "}
             <kbd className="rounded-[4px] bg-surface-sunken px-1.5">⇧⏎</kbd>
           </Button>
+          {aiAvailable ? (
+            <Button
+              disabled={aiLoading}
+              onClick={() => void requestAiSuggestion()}
+              size="sm"
+              variant="secondary"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {aiLoading
+                ? "Drafting…"
+                : session.aiSuggestion
+                  ? "Regenerate"
+                  : "Suggest with AI"}
+            </Button>
+          ) : null}
           <label className="flex items-center gap-2 text-sm text-text-muted">
             <Checkbox
               checked={session.autoAdvance}
@@ -61,6 +86,9 @@ export function OverlayModalRenderer() {
           <Button onClick={cancel} size="sm" variant="ghost">
             Cancel <kbd className="rounded-[4px] bg-surface-sunken px-1.5">⎋</kbd>
           </Button>
+          {session.aiError ? (
+            <p className="basis-full text-xs text-red-600">{session.aiError}</p>
+          ) : null}
         </div>
       </section>
     </div>

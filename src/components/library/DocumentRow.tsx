@@ -57,6 +57,28 @@ export function DocumentRow({
           >
             Rename
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              const link = window.document.createElement("a");
+              link.href = `/api/documents/${document.id}/download?format=md`;
+              link.rel = "noopener";
+              link.click();
+            }}
+          >
+            Download .md
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              const link = window.document.createElement("a");
+              link.href = `/api/documents/${document.id}/download?format=docx`;
+              link.rel = "noopener";
+              link.click();
+            }}
+          >
+            Download .docx
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onDelete(document.id)}>
             Delete
           </DropdownMenuItem>

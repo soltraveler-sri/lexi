@@ -23,7 +23,7 @@ import { ExemplarMark } from "@/components/editor/extensions/ExemplarMark";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { Button } from "@/components/ui/button";
 import { useHotkey } from "@/lib/hotkeys/useHotkey";
-import { countWords, tipTapToMarkdown } from "@/lib/style/export";
+import { countWords } from "@/lib/style/export";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editorStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -59,14 +59,12 @@ function textToTipTap(text: string): TipTapDocument {
   };
 }
 
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+function triggerDownload(url: string) {
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename;
+  // The server endpoint sets Content-Disposition; the browser uses that filename.
+  link.rel = "noopener";
   link.click();
-  URL.revokeObjectURL(url);
 }
 
 function EditorSurface({
@@ -154,11 +152,12 @@ function EditorSurface({
   }, [document.id, router]);
 
   const exportMarkdown = useCallback(() => {
-    downloadText(
-      `${title || "document"}.md`,
-      tipTapToMarkdown(editor.getJSON() as TipTapDocument),
-    );
-  }, [editor, title]);
+    triggerDownload(`/api/documents/${document.id}/download?format=md`);
+  }, [document.id]);
+
+  const downloadDocx = useCallback(() => {
+    triggerDownload(`/api/documents/${document.id}/download?format=docx`);
+  }, [document.id]);
 
   const markAsExemplar = useCallback(async () => {
     const { from, to, empty } = editor.state.selection;
@@ -231,6 +230,7 @@ function EditorSurface({
       runRewrite,
       markAsExemplar,
       exportMarkdown,
+      downloadDocx,
       createDocument,
       renameDocument,
       deleteDocument,
@@ -239,6 +239,7 @@ function EditorSurface({
       activeDocumentId,
       createDocument,
       deleteDocument,
+      downloadDocx,
       editor,
       exportMarkdown,
       markAsExemplar,

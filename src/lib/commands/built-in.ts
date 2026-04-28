@@ -25,10 +25,17 @@ const builtInCommands: Command[] = [
     isAvailable: (ctx) => Boolean(ctx.activeDocumentId),
   },
   {
-    id: "document.export-markdown",
-    title: "Export markdown",
+    id: "document.download-markdown",
+    title: "Download as Markdown (.md)",
     section: "document",
     run: (ctx) => ctx.exportMarkdown(),
+    isAvailable: (ctx) => Boolean(ctx.activeDocumentId),
+  },
+  {
+    id: "document.download-docx",
+    title: "Download as Word (.docx)",
+    section: "document",
+    run: (ctx) => ctx.downloadDocx(),
     isAvailable: (ctx) => Boolean(ctx.activeDocumentId),
   },
   {

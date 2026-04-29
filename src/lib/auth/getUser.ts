@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { isEmailAllowed } from "@/lib/auth/access";
 import { ensureForUser } from "@/lib/db/repos/settings";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,11 @@ export async function getUser() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
+    return null;
+  }
+
+  if (!isEmailAllowed(user.email)) {
+    await supabase.auth.signOut();
     return null;
   }
 

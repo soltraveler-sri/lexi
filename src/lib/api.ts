@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isEmailAllowed } from "@/lib/auth/access";
 import { ensureForUser } from "@/lib/db/repos/settings";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { DocumentType, RendererMode, StyleEventType, VoiceContext } from "@/types";
@@ -13,6 +14,11 @@ export async function getApiUser() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
+    return null;
+  }
+
+  if (!isEmailAllowed(user.email)) {
+    await supabase.auth.signOut();
     return null;
   }
 

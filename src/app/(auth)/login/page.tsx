@@ -35,9 +35,19 @@ function LoginContent() {
         </p>
       </div>
       {error === "not_allowed" ? (
-        <p className="mb-4 rounded-md border border-border bg-bg p-3 text-sm text-text-muted">
-          This deployment is restricted to specific accounts. If you want your own,
-          fork the repo and deploy it with your own keys — see the README.
+        <p className="mb-4 rounded-md border border-border bg-bg p-3 text-sm leading-6 text-text-muted">
+          This deployment is restricted to specific accounts. lexi is open
+          source — you can run it locally with your own API keys. Get the code
+          at{" "}
+          <a
+            href="https://github.com/soltraveler-sri/lexi"
+            target="_blank"
+            rel="noreferrer"
+            className="text-text underline underline-offset-2"
+          >
+            github.com/soltraveler-sri/lexi
+          </a>
+          .
         </p>
       ) : null}
       <Button className="w-full" onClick={continueWithGoogle}>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { PencilLine, Wand2 } from "lucide-react";
+import { Check, PencilLine, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { BubbleMenu } from "@/components/editor/BubbleMenu";
@@ -28,7 +28,35 @@ import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editorStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { DocumentType, RendererMode, TipTapDocument, VoiceContext } from "@/types";
+import type {
+  DocumentType,
+  RendererMode,
+  TipTapDocument,
+  TipTapNode,
+  VoiceContext,
+} from "@/types";
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface SaveState {
+  status: SaveStatus;
+  savedAt: number | null;
+}
+
+const SESSION_NODE_TYPES = new Set(["lockedOriginal", "rewriteInput"]);
+
+function stripSessionNodes(doc: TipTapDocument): TipTapDocument {
+  function visit(nodes: TipTapNode[] | undefined): TipTapNode[] | undefined {
+    if (!nodes) return nodes;
+    return nodes
+      .filter((node) => !SESSION_NODE_TYPES.has(node.type))
+      .map((node) => ({
+        ...node,
+        content: visit(node.content),
+      }));
+  }
+  return { ...doc, content: visit(doc.content) };
+}
 
 export interface EditorDocument {
   id: string;
@@ -67,18 +95,55 @@ function triggerDownload(url: string) {
   link.click();
 }
 
+function SaveIndicator({ state }: { state: SaveState }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (state.status !== "saved" || !state.savedAt) return;
+    const interval = window.setInterval(() => setTick((n) => n + 1), 30000);
+    return () => window.clearInterval(interval);
+  }, [state.status, state.savedAt]);
+
+  if (state.status === "saving") {
+    return <span className="text-text-faint">Saving…</span>;
+  }
+  if (state.status === "error") {
+    return <span className="text-red-600">Save failed</span>;
+  }
+  if (state.status === "saved" && state.savedAt) {
+    const elapsedMs = Date.now() - state.savedAt;
+    const label =
+      elapsedMs < 5000
+        ? "just now"
+        : elapsedMs < 60000
+          ? `${Math.floor(elapsedMs / 1000)}s ago`
+          : `${Math.floor(elapsedMs / 60000)}m ago`;
+    return (
+      <span className="flex items-center gap-1 text-text-faint">
+        <Check className="h-3 w-3" />
+        Saved {label}
+      </span>
+    );
+  }
+  return null;
+}
+
 function EditorSurface({
   document,
   settings,
   editor,
   title,
   onTitleChange,
+  saveState,
+  onSaveNow,
 }: {
   document: EditorDocument;
   settings: EditorSettings;
   editor: NonNullable<ReturnType<typeof useEditor>>;
   title: string;
   onTitleChange: (title: string) => void;
+  saveState: SaveState;
+  onSaveNow: () => void;
 }) {
   const router = useRouter();
   const { selectedText, setSelectedText } = useEditorStore();
@@ -218,6 +283,10 @@ function EditorSurface({
     event.preventDefault();
     toggleSidebar();
   });
+  useHotkey("Mod+S", (event) => {
+    event.preventDefault();
+    onSaveNow();
+  });
 
   const commandContext = useMemo(
     () => ({
@@ -282,7 +351,18 @@ function EditorSurface({
         <div className="mb-10 max-w-[680px]">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
             <PencilLine className="h-3.5 w-3.5" />
-            {document.type.replace("_", " ")}
+            <span>{document.type.replace("_", " ")}</span>
+            <span className="ml-auto flex items-center gap-3 normal-case tracking-normal">
+              <SaveIndicator state={saveState} />
+              <button
+                className="rounded-sm px-2 py-0.5 text-text-muted hover:bg-surface-sunken hover:text-text"
+                onClick={onSaveNow}
+                title="Save now (⌘S)"
+                type="button"
+              >
+                Save
+              </button>
+            </span>
           </div>
           <input
             className="w-full border-0 bg-transparent font-display text-5xl font-semibold leading-tight text-text outline-none placeholder:text-text-faint"
@@ -309,11 +389,40 @@ export function Editor({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(document.title);
+  const titleRef = useRef(title);
   const saveTimer = useRef<number | null>(null);
   const titleTimer = useRef<number | null>(null);
   const snapshotTimer = useRef<number | null>(null);
   const lastSnapshot = useRef(JSON.stringify(document.content));
   const dirtyForSnapshot = useRef(false);
+  const [saveState, setSaveState] = useState<SaveState>({
+    status: "idle",
+    savedAt: null,
+  });
+
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+
+  const performSave = useCallback(
+    async (payload: Record<string, unknown>) => {
+      setSaveState((current) => ({ ...current, status: "saving" }));
+      try {
+        const response = await fetch(`/api/documents/${document.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(`Save failed (${response.status})`);
+        }
+        setSaveState({ status: "saved", savedAt: Date.now() });
+      } catch {
+        setSaveState((current) => ({ ...current, status: "error" }));
+      }
+    },
+    [document.id],
+  );
 
   const scheduleSave = useCallback(
     (payload: Record<string, unknown>) => {
@@ -322,15 +431,11 @@ export function Editor({
       }
 
       saveTimer.current = window.setTimeout(() => {
-        void fetch(`/api/documents/${document.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        router.refresh();
+        saveTimer.current = null;
+        void performSave(payload);
       }, 800);
     },
-    [document.id, router],
+    [performSave],
   );
 
   const editor = useEditor({
@@ -399,30 +504,42 @@ export function Editor({
       },
     },
     onUpdate({ editor: currentEditor }) {
-      const content = currentEditor.getJSON() as TipTapDocument;
+      const content = stripSessionNodes(currentEditor.getJSON() as TipTapDocument);
       dirtyForSnapshot.current = true;
       scheduleSave({ content });
     },
   });
 
-  useEffect(() => {
-    setTitle(document.title);
-    editor?.commands.setContent(document.content as JSONContent, false);
-  }, [document.content, document.title, editor]);
+  const loadedDocId = useRef(document.id);
+  const loadedTitle = useRef(document.title);
 
   useEffect(() => {
+    if (loadedDocId.current === document.id) {
+      return;
+    }
+    loadedDocId.current = document.id;
+    loadedTitle.current = document.title;
+    setTitle(document.title);
+    lastSnapshot.current = JSON.stringify(document.content);
+    dirtyForSnapshot.current = false;
+    editor?.commands.setContent(document.content as JSONContent, false);
+  }, [document.content, document.id, document.title, editor]);
+
+  useEffect(() => {
+    if (title === loadedTitle.current) {
+      return;
+    }
+
     if (titleTimer.current) {
       window.clearTimeout(titleTimer.current);
     }
 
     titleTimer.current = window.setTimeout(() => {
-      void fetch(`/api/documents/${document.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
+      titleTimer.current = null;
+      loadedTitle.current = title;
+      void performSave({ title });
     }, 800);
-  }, [document.id, title]);
+  }, [performSave, title]);
 
   useEffect(() => {
     if (!editor) {
@@ -434,7 +551,7 @@ export function Editor({
         return;
       }
 
-      const content = editor.getJSON() as TipTapDocument;
+      const content = stripSessionNodes(editor.getJSON() as TipTapDocument);
       const serialized = JSON.stringify(content);
 
       if (serialized === lastSnapshot.current) {
@@ -469,6 +586,23 @@ export function Editor({
     [],
   );
 
+  const flushSave = useCallback(() => {
+    if (!editor) return;
+
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    if (titleTimer.current) {
+      window.clearTimeout(titleTimer.current);
+      titleTimer.current = null;
+    }
+
+    const content = stripSessionNodes(editor.getJSON() as TipTapDocument);
+    loadedTitle.current = titleRef.current;
+    void performSave({ title: titleRef.current, content });
+  }, [editor, performSave]);
+
   if (!editor) {
     return null;
   }
@@ -484,7 +618,9 @@ export function Editor({
       <EditorSurface
         document={document}
         editor={editor}
+        onSaveNow={flushSave}
         onTitleChange={setTitle}
+        saveState={saveState}
         settings={settings}
         title={title}
       />

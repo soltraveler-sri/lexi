@@ -13,7 +13,7 @@ I built lexi for myself, for two reasons:
 1. **Daily-driver workflow.** I write a lot, and the worst part of writing-with-AI is the bottleneck between the surface I write on and the surface I prompt on. Lexi collapses them.
 2. **Portfolio piece.** Most product work is about shipping for users. This one is about building a custom AI workflow for myself — the kind of internal tool a PM should be able to spec, build, and live in.
 
-The repo is **source-available under FSL-1.1-MIT** (see [LICENSE.md](./LICENSE.md)) — fork it, run it locally, deploy your own instance with your own keys. After two years it converts to MIT.
+The repo is **noncommercial source-available under [PolyForm Noncommercial 1.0.0](./LICENSE.md)** — fork it, run it locally, deploy your own instance with your own keys. Commercial use requires a separate written license.
 
 ## Architecture
 
@@ -146,4 +146,10 @@ Every document can be downloaded as Markdown or Word via `GET /api/documents/[id
 
 ## License
 
-[FSL-1.1-MIT](./LICENSE.md). Source-available, becomes MIT after two years. The Competing Use clause means: don't fork this and launch a hosted lexi competitor in the first two years; everything else (personal use, internal use, modifications, learning) is fine.
+This project is **noncommercial source-available** under the [PolyForm Noncommercial License 1.0.0](./LICENSE.md). It is not open source.
+
+**Allowed:** personal/local use, study, testing, hobby projects, research, and noncommercial modification.
+
+**Not allowed without separate written permission:** commercial use, paid hosting, resale, sublicensing, inclusion in a commercial product or service, or internal company use for commercial purposes.
+
+For commercial licensing inquiries, contact [soltraveler.sri@gmail.com](mailto:soltraveler.sri@gmail.com).

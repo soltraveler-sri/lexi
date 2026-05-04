@@ -96,11 +96,22 @@ select {
   font-size: 22px;
 }
 
-.lexi-editor .ProseMirror blockquote {
+.lexi-editor .ProseMirror blockquote,
+.locked-original-node {
   margin: 1.2em 0;
-  border-left: 3px solid var(--color-border-strong);
-  padding-left: 18px;
-  color: var(--color-text-muted);
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 6px 6px 0;
+  background: var(--color-surface-sunken);
+  padding: 12px 16px;
+  color: rgba(20, 20, 19, 0.78);
+}
+
+.lexi-editor .ProseMirror blockquote > * {
+  margin: 0;
+}
+
+.lexi-editor .ProseMirror blockquote > * + * {
+  margin-top: 0.6em;
 }
 
 .lexi-editor .ProseMirror ul,
@@ -125,14 +136,6 @@ select {
 
 .lexi-editor .ProseMirror-focused .ProseMirror-selectednode {
   outline: 2px solid var(--color-accent);
-}
-
-.locked-original-node {
-  border-left: 4px solid var(--color-accent);
-  border-radius: 0 6px 6px 0;
-  background: var(--color-surface-sunken);
-  padding: 12px 14px;
-  color: rgba(20, 20, 19, 0.7);
 }
 
 .rewrite-input-node {

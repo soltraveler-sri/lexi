@@ -120,7 +120,7 @@ export function BubbleMenu({ editor }: { editor: Editor }) {
       </ToolButton>
       <ToolButton
         active={editor.isActive("blockquote")}
-        label="Blockquote"
+        label="Highlight block"
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       >
         <Quote className="h-4 w-4" />

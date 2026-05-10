@@ -54,8 +54,8 @@ export default async function JournalReflectionsPage() {
         <h2 className="font-display text-2xl font-semibold">Reflections</h2>
         <p className="mt-2 max-w-xl text-sm text-text-muted">
           Coming in v1.5: surfaced patterns from your edits, time-of-day cadence,
-          recurring tags, drift coaches. For now, here's the corpus you've been
-          building.
+          recurring tags, drift coaches. For now, here&apos;s the corpus
+          you&apos;ve been building.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -54,11 +54,9 @@ function applyParameterDefaults(
   return out;
 }
 
-function looksLikeRefusal(_text: string) {
-  // Placeholder for downstream guardrails; SoC → Draft can produce short
-  // outputs legitimately, so we don't block based on length alone here.
-  return false;
-}
+// Placeholder for downstream guardrails; SoC → Draft can produce short
+// outputs legitimately, so we don't block based on length alone here.
+const SUSPECTED_REFUSAL = false;
 
 export async function POST(
   request: Request,
@@ -158,6 +156,6 @@ export async function POST(
     provider: resolved.provider.id,
     ownership: resolved.ownership,
     transformId: transform.id,
-    finishReason: looksLikeRefusal("") ? "refusal" : undefined,
+    finishReason: SUSPECTED_REFUSAL ? "refusal" : undefined,
   });
 }

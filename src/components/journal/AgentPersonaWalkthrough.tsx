@@ -283,8 +283,8 @@ export function AgentPersonaWalkthrough({ mode }: { mode: "brief" | "deep" }) {
         <h2 className="font-display text-3xl font-semibold">Review & test</h2>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Edit anything you want. Run a test before saving — the agent runs
-          against a sample paragraph using your voice profile (if it's wired to
-          use it). When you're happy, save it to the roster.
+          against a sample paragraph using your voice profile (if it&apos;s
+          wired to use it). When you&apos;re happy, save it to the roster.
         </p>
       </header>
 

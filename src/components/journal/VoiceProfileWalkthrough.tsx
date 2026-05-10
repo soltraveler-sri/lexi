@@ -205,7 +205,7 @@ export function VoiceProfileWalkthrough({
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-text-muted">
             A short conversation that turns your taste into a clean prompt the
-            model uses to preserve voice. You'll review and edit before
+            model uses to preserve voice. You&apos;ll review and edit before
             anything is saved.
           </p>
         </header>

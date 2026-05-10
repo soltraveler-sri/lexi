@@ -86,17 +86,16 @@ export function InlineStripNodeView({ node }: NodeViewProps) {
     ? node.attrs.variantKey
     : null;
 
-  if (!session || !variantKey) {
-    return <NodeViewWrapper className="rewrite-input-node" />;
-  }
-
-  const variant = session.variants[variantKey];
-  const expectedNodeId = session.variantNodeIds[variantKey];
-  const isActive = expectedNodeId === rewriteId;
-  const isFocused = isActive && session.focused === variantKey;
-  const isLoading = variant.status === "loading";
-  const isStreaming = variant.status === "streaming";
+  const variant = session && variantKey ? session.variants[variantKey] : null;
+  const expectedNodeId =
+    session && variantKey ? session.variantNodeIds[variantKey] : null;
+  const isActive = Boolean(expectedNodeId && expectedNodeId === rewriteId);
+  const isFocused =
+    isActive && Boolean(session && variantKey && session.focused === variantKey);
+  const isLoading = variant?.status === "loading";
+  const isStreaming = variant?.status === "streaming";
   const showActionRow = isFocused;
+  const variantText = variant?.text ?? "";
 
   // Focus the textarea when the user picks this variant.
   useEffect(() => {
@@ -113,7 +112,11 @@ export function InlineStripNodeView({ node }: NodeViewProps) {
     }
     textarea.style.height = "0px";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [variant.text]);
+  }, [variantText]);
+
+  if (!session || !variantKey || !variant) {
+    return <NodeViewWrapper className="rewrite-input-node" />;
+  }
 
   if (!isActive) {
     return <NodeViewWrapper className="rewrite-input-node" />;

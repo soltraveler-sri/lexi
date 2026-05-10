@@ -37,7 +37,7 @@ export function BlankDocCTA({
       </div>
       <p className="mx-auto mb-5 max-w-md text-sm text-text-muted">
         Drop your messy thoughts into the doc; lexi will structure them in your
-        voice. Or just keep writing — this card will fade once you've gathered
+        voice. Or just keep writing — this card will fade once you&apos;ve gathered
         momentum.
       </p>
       <div className="flex items-center justify-center gap-2">
@@ -49,7 +49,7 @@ export function BlankDocCTA({
         </Button>
       </div>
       <p className="mt-3 text-xs text-text-faint">
-        or just start writing — that's an entirely valid path
+        or just start writing — that&apos;s an entirely valid path
       </p>
     </div>
   );

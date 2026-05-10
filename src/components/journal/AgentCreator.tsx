@@ -152,7 +152,7 @@ export function AgentCreator({
         <h2 className="font-display text-3xl font-semibold">Write your own agent</h2>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Hand-write the persona prompt and the metadata. You can test before
-          saving from the agent's detail page.
+          saving from the agent&apos;s detail page.
         </p>
       </header>
       <div className="grid gap-4 md:grid-cols-2">

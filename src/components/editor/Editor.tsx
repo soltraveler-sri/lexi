@@ -21,6 +21,7 @@ import {
 } from "@/components/editor/extensions/RewriteStrip/renderers";
 import { ExemplarMark } from "@/components/editor/extensions/ExemplarMark";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
+import { AdHocResearch } from "@/components/research/AdHocResearch";
 import { Button } from "@/components/ui/button";
 import { useHotkey } from "@/lib/hotkeys/useHotkey";
 import { countWords } from "@/lib/style/export";
@@ -147,11 +148,28 @@ function EditorSurface({
 }) {
   const router = useRouter();
   const { selectedText, setSelectedText } = useEditorStore();
-  const { paletteOpen, setPaletteOpen } = useUiStore();
+  const { paletteOpen, setPaletteOpen, researchOpen, setResearchOpen } =
+    useUiStore();
   const { activeDocumentId, setActiveDocumentId, toggleSidebar } = useWorkspaceStore();
   const { session, lastEventId, beginFromSelection, clearLastEventId } =
     useRewriteStrip();
   const [floatingRect, setFloatingRect] = useState<DOMRect | null>(null);
+  const [webSearchAvailable, setWebSearchAvailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/ai/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { webSearch?: { available?: boolean } } | null) => {
+        if (!cancelled && payload?.webSearch?.available) {
+          setWebSearchAvailable(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setActiveDocumentId(document.id);
@@ -303,6 +321,8 @@ function EditorSurface({
       createDocument,
       renameDocument,
       deleteDocument,
+      openAdHocResearch: () => setResearchOpen(true),
+      webSearchAvailable,
     }),
     [
       activeDocumentId,
@@ -317,7 +337,9 @@ function EditorSurface({
       runRewrite,
       selectedText,
       setPaletteOpen,
+      setResearchOpen,
       toggleSidebar,
+      webSearchAvailable,
     ],
   );
 
@@ -335,6 +357,11 @@ function EditorSurface({
         context={commandContext}
         onOpenChange={setPaletteOpen}
         open={paletteOpen}
+      />
+      <AdHocResearch
+        editor={editor}
+        onOpenChange={setResearchOpen}
+        open={researchOpen}
       />
       {floatingRect && selectedText && !session ? (
         <Button

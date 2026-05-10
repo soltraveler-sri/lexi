@@ -58,7 +58,14 @@ const builtInCommands: Command[] = [
     id: "style.open-profile",
     title: "Open Style Profile",
     section: "style",
-    run: (ctx) => ctx.router.push("/style"),
+    run: (ctx) => ctx.router.push("/journal/style-guide"),
+  },
+  {
+    id: "research.ad-hoc",
+    title: "Ad-hoc research (web)",
+    section: "edit",
+    run: (ctx) => ctx.openAdHocResearch(),
+    isAvailable: (ctx) => ctx.webSearchAvailable !== false,
   },
   {
     id: "system.open-settings",

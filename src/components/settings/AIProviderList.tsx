@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyRound, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -37,6 +37,34 @@ export function AIProviderList({ credentials }: { credentials: CredentialListIte
   const [apiKey, setApiKey] = useState("");
   const [label, setLabel] = useState("Personal key");
   const [isDefault, setIsDefault] = useState(true);
+  const [webSearch, setWebSearch] = useState<{
+    available: boolean;
+    providerId: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/ai/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then(
+        (
+          payload: {
+            webSearch?: { available?: boolean; providerId?: string | null };
+          } | null,
+        ) => {
+          if (!cancelled && payload?.webSearch) {
+            setWebSearch({
+              available: Boolean(payload.webSearch.available),
+              providerId: payload.webSearch.providerId ?? null,
+            });
+          }
+        },
+      )
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function addCredential() {
     await fetch("/api/credentials", {
@@ -85,6 +113,15 @@ export function AIProviderList({ credentials }: { credentials: CredentialListIte
       ) : (
         <p className="text-sm text-text-muted">No AI provider keys saved.</p>
       )}
+
+      {webSearch ? (
+        <p className="text-xs text-text-faint">
+          Web search:{" "}
+          {webSearch.available
+            ? `available via ${webSearch.providerId ?? "current provider"}`
+            : "unavailable for the configured provider"}
+        </p>
+      ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>

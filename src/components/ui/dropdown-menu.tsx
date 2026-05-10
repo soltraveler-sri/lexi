@@ -47,6 +47,22 @@ export const DropdownMenuItem = React.forwardRef<
 
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
+export const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    className={cn(
+      "px-2 pb-1 pt-2 text-xs uppercase tracking-wide text-text-faint",
+      className,
+    )}
+    ref={ref}
+    {...props}
+  />
+));
+
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
+
 export const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>

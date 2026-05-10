@@ -61,6 +61,11 @@ export const rendererModeEnum = pgEnum("renderer_mode", [
 
 export const callTierEnum = pgEnum("call_tier", ["light", "heavy"]);
 
+export const agentOutputKindEnum = pgEnum("agent_output_kind", [
+  "rewrite",
+  "response",
+]);
+
 const authSchema = pgSchema("auth");
 
 export const authUsers = authSchema.table("users", {
@@ -171,12 +176,14 @@ export const styleEvents = pgTable(
     note: text("note"),
     aiPrompt: text("ai_prompt"),
     aiProvider: text("ai_provider"),
+    agentId: uuid("agent_id"),
     timeSpentMs: integer("time_spent_ms").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     userIdx: index("style_events_user_id_idx").on(table.userId),
     documentIdx: index("style_events_document_id_idx").on(table.documentId),
+    agentIdx: index("style_events_agent_id_idx").on(table.agentId),
     userCreatedIdx: index("style_events_user_created_idx").on(
       table.userId,
       table.createdAt,
@@ -297,6 +304,47 @@ export const userSettings = pgTable(
   }),
 );
 
+export const agents = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    role: text("role").notNull().default("editor"),
+    description: text("description"),
+    personaPrompt: text("persona_prompt").notNull(),
+    usesVoiceProfile: boolean("uses_voice_profile").notNull().default(true),
+    voiceProfileScope: voiceContextEnum("voice_profile_scope"),
+    outputKind: agentOutputKindEnum("output_kind").notNull().default("rewrite"),
+    defaultModel: text("default_model"),
+    defaultTemperature: numeric("default_temperature", {
+      precision: 3,
+      scale: 2,
+    }),
+    ...timestamps,
+  },
+  (table) => ({
+    userIdx: index("agents_user_id_idx").on(table.userId),
+  }),
+);
+
+export const notes = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    content: text("content").notNull().default(""),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: uniqueIndex("notes_user_id_key").on(table.userId),
+  }),
+);
+
 export const usageEvents = pgTable(
   "usage_events",
   {
@@ -321,10 +369,12 @@ export const usageEvents = pgTable(
       onDelete: "set null",
     }),
     transformId: text("transform_id"),
+    agentId: uuid("agent_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     userIdx: index("usage_events_user_id_idx").on(table.userId),
+    agentIdx: index("usage_events_agent_id_idx").on(table.agentId),
     userCreatedIdx: index("usage_events_user_created_idx").on(
       table.userId,
       table.createdAt,
@@ -376,3 +426,7 @@ export type UserSetting = typeof userSettings.$inferSelect;
 export type UserSettingInsert = typeof userSettings.$inferInsert;
 export type UsageEvent = typeof usageEvents.$inferSelect;
 export type UsageEventInsert = typeof usageEvents.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type NoteInsert = typeof notes.$inferInsert;
+export type Agent = typeof agents.$inferSelect;
+export type AgentInsert = typeof agents.$inferInsert;

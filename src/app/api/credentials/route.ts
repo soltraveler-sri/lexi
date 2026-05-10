@@ -51,17 +51,25 @@ export async function POST(request: Request) {
     return badRequest("provider_and_api_key_required");
   }
 
-  const credential = await credentialsRepo.create({
-    userId: user.id,
-    provider,
-    ownership: "user",
-    apiKey,
-    label,
-    isDefault: readBoolean(body, "isDefault", false),
-  });
+  try {
+    const credential = await credentialsRepo.create({
+      userId: user.id,
+      provider,
+      ownership: "user",
+      apiKey,
+      label,
+      isDefault: readBoolean(body, "isDefault", false),
+    });
 
-  return NextResponse.json(
-    { credential: { ...credential, apiKey: "••••••••" } },
-    { status: 201 },
-  );
+    return NextResponse.json(
+      { credential: { ...credential, apiKey: "••••••••" } },
+      { status: 201 },
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message.includes("LEXI_CREDENTIALS_KEY")
+        ? "Server credential encryption is not configured. Ask the operator to set LEXI_CREDENTIALS_KEY."
+        : "Could not save credential.";
+    return NextResponse.json({ error: "credential_save_failed", message }, { status: 500 });
+  }
 }

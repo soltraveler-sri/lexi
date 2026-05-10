@@ -1,6 +1,6 @@
 import { registerCommand } from "@/lib/commands/registry";
 import type { Command } from "@/lib/commands/types";
-import "@/lib/transforms/rewrite";
+import "@/lib/transforms/inline";
 
 const builtInCommands: Command[] = [
   {
@@ -47,6 +47,60 @@ const builtInCommands: Command[] = [
     isAvailable: (ctx) => ctx.selectedText.length > 0,
   },
   {
+    id: "transform.tighten",
+    title: "Tighten selection",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tighten_loosen", { direction: "tighten" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.loosen",
+    title: "Loosen selection",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tighten_loosen", { direction: "loosen" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.tone-direct",
+    title: "Tone shift: more direct",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tone_shift", {
+        axis: "hedged_direct",
+        direction: "direct",
+      }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.tone-warmer",
+    title: "Tone shift: warmer",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tone_shift", {
+        axis: "cold_warm",
+        direction: "warm",
+      }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.audience-leader",
+    title: "Re-aim at: senior leader",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("audience_swap", { audience: "senior_leader" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.audience-generalist",
+    title: "Re-aim at: generalist reader",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("audience_swap", { audience: "generalist_reader" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
     id: "edit.mark-as-exemplar",
     title: "Mark as exemplar",
     hotkey: "Mod+E",
@@ -58,7 +112,21 @@ const builtInCommands: Command[] = [
     id: "style.open-profile",
     title: "Open Style Profile",
     section: "style",
-    run: (ctx) => ctx.router.push("/style"),
+    run: (ctx) => ctx.router.push("/journal/style-guide"),
+  },
+  {
+    id: "research.ad-hoc",
+    title: "Ad-hoc research (web)",
+    section: "edit",
+    run: (ctx) => ctx.openAdHocResearch(),
+    isAvailable: (ctx) => ctx.webSearchAvailable !== false,
+  },
+  {
+    id: "doc-transform.soc-to-draft",
+    title: "Stream of consciousness → Draft / Outline",
+    section: "document",
+    run: (ctx) => ctx.openDocTransform?.(),
+    isAvailable: (ctx) => Boolean(ctx.activeDocumentId),
   },
   {
     id: "system.open-settings",

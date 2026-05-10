@@ -4,12 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { Check, PencilLine, Wand2 } from "lucide-react";
+import { Check, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { AgentResponsePanel, type AgentResponseSession } from "@/components/editor/AgentResponsePanel";
+import { BlankDocCTA, shouldShowBlankCta } from "@/components/editor/BlankDocCTA";
 import { BubbleMenu } from "@/components/editor/BubbleMenu";
+import { DocTransformPanel } from "@/components/editor/DocTransformPanel";
 import { EditTagToast } from "@/components/editor/EditTagToast";
 import { SpotlightOverlay } from "@/components/editor/SpotlightOverlay";
+import type { AgentListItem } from "@/components/journal/AgentsRoster";
+import { consumeTextStream } from "@/lib/ai/streaming";
 import {
   RewriteStripProvider,
   useRewriteStrip,
@@ -21,7 +26,18 @@ import {
 } from "@/components/editor/extensions/RewriteStrip/renderers";
 import { ExemplarMark } from "@/components/editor/extensions/ExemplarMark";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
-import { Button } from "@/components/ui/button";
+import { AdHocResearch } from "@/components/research/AdHocResearch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Transform } from "@/lib/transforms/types";
+import { getTransform } from "@/lib/transforms/registry";
+import "@/lib/transforms/inline";
 import { useHotkey } from "@/lib/hotkeys/useHotkey";
 import { countWords } from "@/lib/style/export";
 import { cn } from "@/lib/utils";
@@ -147,11 +163,60 @@ function EditorSurface({
 }) {
   const router = useRouter();
   const { selectedText, setSelectedText } = useEditorStore();
-  const { paletteOpen, setPaletteOpen } = useUiStore();
+  const {
+    paletteOpen,
+    setPaletteOpen,
+    researchOpen,
+    setResearchOpen,
+    docTransformOpen,
+    setDocTransformOpen,
+  } = useUiStore();
+  const [docTransformTarget, setDocTransformTarget] = useState<
+    "draft" | "outline"
+  >("draft");
+  const [docTransformSource, setDocTransformSource] = useState<
+    "blank-cta" | "doc-action"
+  >("doc-action");
+  const [currentWordCount, setCurrentWordCount] = useState(0);
+  const [agents, setAgents] = useState<AgentListItem[]>([]);
+  const [agentSession, setAgentSession] = useState<AgentResponseSession | null>(
+    null,
+  );
+  const agentAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/agents")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { agents?: AgentListItem[] } | null) => {
+        if (!cancelled && Array.isArray(payload?.agents)) {
+          setAgents(payload!.agents);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const { activeDocumentId, setActiveDocumentId, toggleSidebar } = useWorkspaceStore();
   const { session, lastEventId, beginFromSelection, clearLastEventId } =
     useRewriteStrip();
-  const [floatingRect, setFloatingRect] = useState<DOMRect | null>(null);
+  const [webSearchAvailable, setWebSearchAvailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/ai/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { webSearch?: { available?: boolean } } | null) => {
+        if (!cancelled && payload?.webSearch?.available) {
+          setWebSearchAvailable(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setActiveDocumentId(document.id);
@@ -163,13 +228,10 @@ function EditorSurface({
 
     if (empty || from === to) {
       setSelectedText("");
-      setFloatingRect(null);
       return;
     }
 
     setSelectedText(editor.state.doc.textBetween(from, to, "\n"));
-    const coords = editor.view.coordsAtPos(to);
-    setFloatingRect(new DOMRect(coords.right + 8, coords.bottom - 28, 32, 32));
   }, [editor, setSelectedText]);
 
   useEffect(() => {
@@ -179,9 +241,210 @@ function EditorSurface({
     };
   }, [editor, updateSelectionState]);
 
+  const recomputeWordCount = useCallback(() => {
+    const text = editor.state.doc.textBetween(
+      0,
+      editor.state.doc.content.size,
+      "\n",
+    );
+    setCurrentWordCount(countWords(text));
+  }, [editor]);
+
+  useEffect(() => {
+    recomputeWordCount();
+    editor.on("update", recomputeWordCount);
+    return () => {
+      editor.off("update", recomputeWordCount);
+    };
+  }, [editor, recomputeWordCount]);
+
+  const openDocTransform = useCallback(
+    (target: "draft" | "outline", source: "blank-cta" | "doc-action") => {
+      setDocTransformTarget(target);
+      setDocTransformSource(source);
+      setDocTransformOpen(true);
+    },
+    [setDocTransformOpen],
+  );
+
+  const runTransform = useCallback(
+    (transform: Transform, parameters: Record<string, string>) => {
+      beginFromSelection({
+        transformId: transform.id,
+        transformName: transform.name,
+        variantCount: transform.variantCount,
+        parameters,
+      });
+    },
+    [beginFromSelection],
+  );
+
   const runRewrite = useCallback(() => {
-    beginFromSelection();
-  }, [beginFromSelection]);
+    const rewrite = getTransform("rewrite");
+    if (!rewrite) {
+      beginFromSelection();
+      return;
+    }
+    runTransform(rewrite, {});
+  }, [beginFromSelection, runTransform]);
+
+  const runInlineTransform = useCallback(
+    (transformId: string, parameters?: Record<string, unknown>) => {
+      const transform = getTransform(transformId);
+      if (!transform) {
+        return;
+      }
+      const stringParams: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parameters ?? {})) {
+        if (typeof value === "string") {
+          stringParams[key] = value;
+        }
+      }
+      runTransform(transform, stringParams);
+    },
+    [runTransform],
+  );
+
+  const runAgentOnText = useCallback(
+    async (agent: AgentListItem, scope: "selection" | "document", text: string) => {
+      agentAbortRef.current?.abort();
+      const controller = new AbortController();
+      agentAbortRef.current = controller;
+
+      setAgentSession({
+        agentId: agent.id,
+        agentName: agent.name,
+        scope,
+        status: "loading",
+        text: "",
+        error: null,
+      });
+
+      try {
+        const response = await fetch(`/api/agents/${agent.id}/run`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scope,
+            text,
+            documentId: document.id,
+            documentType: document.type,
+            voiceContext: document.voiceContext,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as
+            | { message?: string; error?: string }
+            | null;
+          setAgentSession((current) =>
+            current && current.agentId === agent.id
+              ? {
+                  ...current,
+                  status: "error",
+                  error: payload?.message ?? payload?.error ?? "Agent failed.",
+                }
+              : current,
+          );
+          return;
+        }
+
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "streaming" }
+            : current,
+        );
+
+        const result = await consumeTextStream(response, {
+          signal: controller.signal,
+          onChunk: (cumulative) => {
+            setAgentSession((current) =>
+              current && current.agentId === agent.id
+                ? { ...current, text: cumulative }
+                : current,
+            );
+          },
+        });
+
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "ready", text: result.text }
+            : current,
+        );
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "Network error";
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "error", error: message }
+            : current,
+        );
+      }
+    },
+    [document.id, document.type, document.voiceContext],
+  );
+
+  const runAgentOnSelection = useCallback(
+    (agent: AgentListItem) => {
+      if (!editor) {
+        return;
+      }
+      const { from, to, empty } = editor.state.selection;
+      if (empty || from === to) {
+        return;
+      }
+      const text = editor.state.doc.textBetween(from, to, "\n");
+
+      if (agent.outputKind === "rewrite") {
+        // Rewrite-shape agents reuse the strip controller via a runUrl override
+        // so the user gets the same accept/edit/replace flow. Single variant.
+        beginFromSelection({
+          transformId: `agent:${agent.id}`,
+          transformName: agent.name,
+          variantCount: 1,
+          parameters: {},
+          runUrl: `/api/agents/${agent.id}/run`,
+          buildRequestBody: ({ selection }) => ({
+            scope: "selection",
+            text: selection,
+            documentId: document.id,
+            documentType: document.type,
+            voiceContext: document.voiceContext,
+          }),
+          agentId: agent.id,
+        });
+        return;
+      }
+
+      void runAgentOnText(agent, "selection", text);
+    },
+    [
+      beginFromSelection,
+      document.id,
+      document.type,
+      document.voiceContext,
+      editor,
+      runAgentOnText,
+    ],
+  );
+
+  const runAgentOnDocument = useCallback(
+    (agent: AgentListItem) => {
+      if (!editor) {
+        return;
+      }
+      const text = editor.state.doc.textBetween(
+        0,
+        editor.state.doc.content.size,
+        "\n",
+      );
+      void runAgentOnText(agent, "document", text);
+    },
+    [editor, runAgentOnText],
+  );
 
   const createDocument = useCallback(async () => {
     const response = await fetch("/api/documents", {
@@ -303,6 +566,10 @@ function EditorSurface({
       createDocument,
       renameDocument,
       deleteDocument,
+      openAdHocResearch: () => setResearchOpen(true),
+      runInlineTransform,
+      openDocTransform: () => openDocTransform("draft", "doc-action"),
+      webSearchAvailable,
     }),
     [
       activeDocumentId,
@@ -314,10 +581,14 @@ function EditorSurface({
       markAsExemplar,
       renameDocument,
       router,
+      runInlineTransform,
       runRewrite,
+      openDocTransform,
       selectedText,
       setPaletteOpen,
+      setResearchOpen,
       toggleSidebar,
+      webSearchAvailable,
     ],
   );
 
@@ -336,23 +607,76 @@ function EditorSurface({
         onOpenChange={setPaletteOpen}
         open={paletteOpen}
       />
-      {floatingRect && selectedText && !session ? (
-        <Button
-          className="fixed z-30 h-8 w-8 rounded-full p-0 shadow-md"
-          onClick={runRewrite}
-          size="icon"
-          style={{ left: floatingRect.left, top: floatingRect.top }}
-          title="Rewrite selection"
-        >
-          <Wand2 className="h-4 w-4" />
-        </Button>
-      ) : null}
+      <AdHocResearch
+        editor={editor}
+        onOpenChange={setResearchOpen}
+        open={researchOpen}
+      />
+      <DocTransformPanel
+        documentId={document.id}
+        documentType={document.type}
+        editor={editor}
+        initialTarget={docTransformTarget}
+        onOpenChange={setDocTransformOpen}
+        open={docTransformOpen}
+        triggerSource={docTransformSource}
+        voiceContext={document.voiceContext}
+      />
+      <AgentResponsePanel
+        onClose={() => {
+          agentAbortRef.current?.abort();
+          agentAbortRef.current = null;
+          setAgentSession(null);
+        }}
+        session={agentSession}
+      />
       <main className="mx-auto max-w-[840px] px-12 pb-24 pt-20">
         <div className="mb-10 max-w-[680px]">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
             <PencilLine className="h-3.5 w-3.5" />
             <span>{document.type.replace("_", " ")}</span>
             <span className="ml-auto flex items-center gap-3 normal-case tracking-normal">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="rounded-sm px-2 py-0.5 text-accent-hover hover:bg-accent-soft"
+                    title="Run a doc-level action"
+                    type="button"
+                  >
+                    ✨ Doc actions
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Transforms</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() => openDocTransform("draft", "doc-action")}
+                  >
+                    Stream of consciousness → Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => openDocTransform("outline", "doc-action")}
+                  >
+                    Stream of consciousness → Outline
+                  </DropdownMenuItem>
+                  {agents.length > 0 ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Run agent on document</DropdownMenuLabel>
+                      {agents.map((agent) => (
+                        <DropdownMenuItem
+                          key={agent.id}
+                          onSelect={() => runAgentOnDocument(agent)}
+                        >
+                          {agent.name}
+                          <span className="ml-auto text-xs text-text-faint">
+                            {agent.outputKind}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <SaveIndicator state={saveState} />
               <button
                 className="rounded-sm px-2 py-0.5 text-text-muted hover:bg-surface-sunken hover:text-text"
@@ -371,8 +695,22 @@ function EditorSurface({
             value={title}
           />
         </div>
+        {shouldShowBlankCta(currentWordCount) ? (
+          <BlankDocCTA
+            className="mb-8"
+            onOpenWithTarget={(target) => openDocTransform(target, "blank-cta")}
+            wordCount={currentWordCount}
+          />
+        ) : null}
         <section className={cn("lexi-editor", session && "select-none")}>
-          {editor ? <BubbleMenu editor={editor} /> : null}
+          {editor ? (
+            <BubbleMenu
+              agents={agents}
+              editor={editor}
+              onRunAgent={runAgentOnSelection}
+              onRunTransform={runTransform}
+            />
+          ) : null}
           <EditorContent editor={editor} />
         </section>
       </main>

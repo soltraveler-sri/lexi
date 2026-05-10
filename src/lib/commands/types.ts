@@ -15,6 +15,11 @@ export interface CommandContext {
   createDocument: () => void;
   renameDocument: () => void;
   deleteDocument: () => void;
+  openAdHocResearch: () => void;
+  openDocTransform?: (id?: string) => void;
+  runInlineTransform?: (transformId: string, params?: Record<string, unknown>) => void;
+  openAgent?: (id: string, scope: "selection" | "document") => void;
+  webSearchAvailable?: boolean;
 }
 
 export interface Command {

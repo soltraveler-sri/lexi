@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --check ."
+    "format": "prettier --check .",
+    "migrate-credentials": "node scripts/migrate-credentials.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",

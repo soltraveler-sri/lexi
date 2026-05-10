@@ -122,6 +122,13 @@ const builtInCommands: Command[] = [
     isAvailable: (ctx) => ctx.webSearchAvailable !== false,
   },
   {
+    id: "doc-transform.soc-to-draft",
+    title: "Stream of consciousness → Draft / Outline",
+    section: "document",
+    run: (ctx) => ctx.openDocTransform?.(),
+    isAvailable: (ctx) => Boolean(ctx.activeDocumentId),
+  },
+  {
     id: "system.open-settings",
     title: "Open settings",
     hotkey: "Mod+,",

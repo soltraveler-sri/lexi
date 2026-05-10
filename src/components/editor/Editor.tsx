@@ -7,7 +7,9 @@ import Link from "@tiptap/extension-link";
 import { Check, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { BlankDocCTA, shouldShowBlankCta } from "@/components/editor/BlankDocCTA";
 import { BubbleMenu } from "@/components/editor/BubbleMenu";
+import { DocTransformPanel } from "@/components/editor/DocTransformPanel";
 import { EditTagToast } from "@/components/editor/EditTagToast";
 import { SpotlightOverlay } from "@/components/editor/SpotlightOverlay";
 import {
@@ -150,8 +152,21 @@ function EditorSurface({
 }) {
   const router = useRouter();
   const { selectedText, setSelectedText } = useEditorStore();
-  const { paletteOpen, setPaletteOpen, researchOpen, setResearchOpen } =
-    useUiStore();
+  const {
+    paletteOpen,
+    setPaletteOpen,
+    researchOpen,
+    setResearchOpen,
+    docTransformOpen,
+    setDocTransformOpen,
+  } = useUiStore();
+  const [docTransformTarget, setDocTransformTarget] = useState<
+    "draft" | "outline"
+  >("draft");
+  const [docTransformSource, setDocTransformSource] = useState<
+    "blank-cta" | "doc-action"
+  >("doc-action");
+  const [currentWordCount, setCurrentWordCount] = useState(0);
   const { activeDocumentId, setActiveDocumentId, toggleSidebar } = useWorkspaceStore();
   const { session, lastEventId, beginFromSelection, clearLastEventId } =
     useRewriteStrip();
@@ -194,6 +209,32 @@ function EditorSurface({
       editor.off("selectionUpdate", updateSelectionState);
     };
   }, [editor, updateSelectionState]);
+
+  const recomputeWordCount = useCallback(() => {
+    const text = editor.state.doc.textBetween(
+      0,
+      editor.state.doc.content.size,
+      "\n",
+    );
+    setCurrentWordCount(countWords(text));
+  }, [editor]);
+
+  useEffect(() => {
+    recomputeWordCount();
+    editor.on("update", recomputeWordCount);
+    return () => {
+      editor.off("update", recomputeWordCount);
+    };
+  }, [editor, recomputeWordCount]);
+
+  const openDocTransform = useCallback(
+    (target: "draft" | "outline", source: "blank-cta" | "doc-action") => {
+      setDocTransformTarget(target);
+      setDocTransformSource(source);
+      setDocTransformOpen(true);
+    },
+    [setDocTransformOpen],
+  );
 
   const runTransform = useCallback(
     (transform: Transform, parameters: Record<string, string>) => {
@@ -355,6 +396,7 @@ function EditorSurface({
       deleteDocument,
       openAdHocResearch: () => setResearchOpen(true),
       runInlineTransform,
+      openDocTransform: () => openDocTransform("draft", "doc-action"),
       webSearchAvailable,
     }),
     [
@@ -369,6 +411,7 @@ function EditorSurface({
       router,
       runInlineTransform,
       runRewrite,
+      openDocTransform,
       selectedText,
       setPaletteOpen,
       setResearchOpen,
@@ -397,12 +440,30 @@ function EditorSurface({
         onOpenChange={setResearchOpen}
         open={researchOpen}
       />
+      <DocTransformPanel
+        documentId={document.id}
+        documentType={document.type}
+        editor={editor}
+        initialTarget={docTransformTarget}
+        onOpenChange={setDocTransformOpen}
+        open={docTransformOpen}
+        triggerSource={docTransformSource}
+        voiceContext={document.voiceContext}
+      />
       <main className="mx-auto max-w-[840px] px-12 pb-24 pt-20">
         <div className="mb-10 max-w-[680px]">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
             <PencilLine className="h-3.5 w-3.5" />
             <span>{document.type.replace("_", " ")}</span>
             <span className="ml-auto flex items-center gap-3 normal-case tracking-normal">
+              <button
+                className="rounded-sm px-2 py-0.5 text-accent-hover hover:bg-accent-soft"
+                onClick={() => openDocTransform("draft", "doc-action")}
+                title="Run a doc-level transform"
+                type="button"
+              >
+                ✨ Doc actions
+              </button>
               <SaveIndicator state={saveState} />
               <button
                 className="rounded-sm px-2 py-0.5 text-text-muted hover:bg-surface-sunken hover:text-text"
@@ -421,6 +482,13 @@ function EditorSurface({
             value={title}
           />
         </div>
+        {shouldShowBlankCta(currentWordCount) ? (
+          <BlankDocCTA
+            className="mb-8"
+            onOpenWithTarget={(target) => openDocTransform(target, "blank-cta")}
+            wordCount={currentWordCount}
+          />
+        ) : null}
         <section className={cn("lexi-editor", session && "select-none")}>
           {editor ? (
             <BubbleMenu editor={editor} onRunTransform={runTransform} />

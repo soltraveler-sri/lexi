@@ -1,8 +1,13 @@
-import { redirect } from "next/navigation";
+import * as preferencesRepo from "@/lib/db/repos/preferences";
+import { requireUser } from "@/lib/auth/getUser";
+import { VoiceProfileWalkthrough } from "@/components/journal/VoiceProfileWalkthrough";
 
-// The voice profile walkthrough lives at this URL but the implementation
-// arrives in #22. Until then we redirect back to the Style Guide so the
-// entry point in the panel never lands the user on a 404.
-export default function VoiceProfileWalkthroughPlaceholder() {
-  redirect("/journal/style-guide");
+export const dynamic = "force-dynamic";
+
+export default async function VoiceProfileWalkthroughPage() {
+  const user = await requireUser();
+  const existing = await preferencesRepo.getForUser(user.id);
+  return (
+    <VoiceProfileWalkthrough existingPreferences={existing?.content ?? ""} />
+  );
 }

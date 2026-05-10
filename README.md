@@ -38,7 +38,7 @@ Stack: Next.js 14 (App Router) · TypeScript · Supabase (Auth + Postgres + RLS)
 
 1. Create a Supabase project.
 2. Enable Google OAuth in Auth settings, add your callback URL: `<your-app-url>/auth/callback`.
-3. Apply migrations in order: `supabase/migrations/0001_init.sql`, then `supabase/migrations/0002_usage_events_ownership.sql`.
+3. Apply migrations in `supabase/migrations/` in numeric order. The latest is `0003_encrypt_user_credentials.sql`.
 
 ### 2. Local
 
@@ -65,8 +65,39 @@ Connect your fork to Vercel and set the same env vars in the project dashboard. 
 | `DATABASE_URL` | Drizzle Postgres connection |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Optional server-side AI fallback for users without BYOK keys |
 | `LEXI_DEFAULT_AI_PROVIDER` | `anthropic` (default) or `openai` |
+| `LEXI_CREDENTIALS_KEY` | **Required** to write BYOK credentials. 32 bytes, base64 or hex. See [Credential encryption](#credential-encryption-byok). |
 | `LEXI_ALLOWED_EMAILS` | Comma-separated allowlist. Unset = open BYOK fork. Set = single-tenant lock. |
 | `LEXI_RATE_LIMIT_ALLOWLIST_EMAILS` | Operator emails that bypass MVP rate limits |
+
+### Credential encryption (BYOK)
+
+BYOK provider keys in `user_credentials.api_key` are encrypted at rest with AES-256-GCM, sourced from `LEXI_CREDENTIALS_KEY`. Encrypted values are stored in the same column with the self-describing prefix `lxenc:v1:<base64(iv||tag||ciphertext)>`.
+
+**Generate a key:**
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Set the output as `LEXI_CREDENTIALS_KEY` locally (`.env.local`) and on Vercel.
+
+**Migrate existing plaintext rows** once the env var is configured:
+
+```bash
+DATABASE_URL=... LEXI_CREDENTIALS_KEY=... pnpm migrate-credentials
+```
+
+The script is idempotent — rows already in the `lxenc:v1:` envelope are skipped.
+
+**Key rotation:** treat the encryption key as a production secret. To rotate:
+
+1. Decrypt all rows under the old key (a rotation script can be added if/when this is needed in production).
+2. Re-encrypt under the new key.
+3. Update `LEXI_CREDENTIALS_KEY` and redeploy.
+
+**Losing the key makes existing encrypted BYOK rows unrecoverable.** Users would need to re-add their provider keys via Settings.
+
+If the env var is missing, the app refuses to write new BYOK credentials and surfaces a clear error — env-fallback AI calls (using `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`) continue to work.
 
 ## Extending
 

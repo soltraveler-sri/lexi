@@ -1,6 +1,6 @@
 import { registerCommand } from "@/lib/commands/registry";
 import type { Command } from "@/lib/commands/types";
-import "@/lib/transforms/rewrite";
+import "@/lib/transforms/inline";
 
 const builtInCommands: Command[] = [
   {
@@ -44,6 +44,60 @@ const builtInCommands: Command[] = [
     hotkey: "Mod+R",
     section: "edit",
     run: (ctx) => ctx.runRewrite(),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.tighten",
+    title: "Tighten selection",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tighten_loosen", { direction: "tighten" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.loosen",
+    title: "Loosen selection",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tighten_loosen", { direction: "loosen" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.tone-direct",
+    title: "Tone shift: more direct",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tone_shift", {
+        axis: "hedged_direct",
+        direction: "direct",
+      }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.tone-warmer",
+    title: "Tone shift: warmer",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("tone_shift", {
+        axis: "cold_warm",
+        direction: "warm",
+      }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.audience-leader",
+    title: "Re-aim at: senior leader",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("audience_swap", { audience: "senior_leader" }),
+    isAvailable: (ctx) => ctx.selectedText.length > 0,
+  },
+  {
+    id: "transform.audience-generalist",
+    title: "Re-aim at: generalist reader",
+    section: "edit",
+    run: (ctx) =>
+      ctx.runInlineTransform?.("audience_swap", { audience: "generalist_reader" }),
     isAvailable: (ctx) => ctx.selectedText.length > 0,
   },
   {

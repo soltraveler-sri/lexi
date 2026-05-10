@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { Check, PencilLine, Wand2 } from "lucide-react";
+import { Check, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { BubbleMenu } from "@/components/editor/BubbleMenu";
@@ -22,7 +22,9 @@ import {
 import { ExemplarMark } from "@/components/editor/extensions/ExemplarMark";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { AdHocResearch } from "@/components/research/AdHocResearch";
-import { Button } from "@/components/ui/button";
+import type { Transform } from "@/lib/transforms/types";
+import { getTransform } from "@/lib/transforms/registry";
+import "@/lib/transforms/inline";
 import { useHotkey } from "@/lib/hotkeys/useHotkey";
 import { countWords } from "@/lib/style/export";
 import { cn } from "@/lib/utils";
@@ -153,7 +155,6 @@ function EditorSurface({
   const { activeDocumentId, setActiveDocumentId, toggleSidebar } = useWorkspaceStore();
   const { session, lastEventId, beginFromSelection, clearLastEventId } =
     useRewriteStrip();
-  const [floatingRect, setFloatingRect] = useState<DOMRect | null>(null);
   const [webSearchAvailable, setWebSearchAvailable] = useState(false);
 
   useEffect(() => {
@@ -181,13 +182,10 @@ function EditorSurface({
 
     if (empty || from === to) {
       setSelectedText("");
-      setFloatingRect(null);
       return;
     }
 
     setSelectedText(editor.state.doc.textBetween(from, to, "\n"));
-    const coords = editor.view.coordsAtPos(to);
-    setFloatingRect(new DOMRect(coords.right + 8, coords.bottom - 28, 32, 32));
   }, [editor, setSelectedText]);
 
   useEffect(() => {
@@ -197,9 +195,43 @@ function EditorSurface({
     };
   }, [editor, updateSelectionState]);
 
+  const runTransform = useCallback(
+    (transform: Transform, parameters: Record<string, string>) => {
+      beginFromSelection({
+        transformId: transform.id,
+        transformName: transform.name,
+        variantCount: transform.variantCount,
+        parameters,
+      });
+    },
+    [beginFromSelection],
+  );
+
   const runRewrite = useCallback(() => {
-    beginFromSelection();
-  }, [beginFromSelection]);
+    const rewrite = getTransform("rewrite");
+    if (!rewrite) {
+      beginFromSelection();
+      return;
+    }
+    runTransform(rewrite, {});
+  }, [beginFromSelection, runTransform]);
+
+  const runInlineTransform = useCallback(
+    (transformId: string, parameters?: Record<string, unknown>) => {
+      const transform = getTransform(transformId);
+      if (!transform) {
+        return;
+      }
+      const stringParams: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parameters ?? {})) {
+        if (typeof value === "string") {
+          stringParams[key] = value;
+        }
+      }
+      runTransform(transform, stringParams);
+    },
+    [runTransform],
+  );
 
   const createDocument = useCallback(async () => {
     const response = await fetch("/api/documents", {
@@ -322,6 +354,7 @@ function EditorSurface({
       renameDocument,
       deleteDocument,
       openAdHocResearch: () => setResearchOpen(true),
+      runInlineTransform,
       webSearchAvailable,
     }),
     [
@@ -334,6 +367,7 @@ function EditorSurface({
       markAsExemplar,
       renameDocument,
       router,
+      runInlineTransform,
       runRewrite,
       selectedText,
       setPaletteOpen,
@@ -363,17 +397,6 @@ function EditorSurface({
         onOpenChange={setResearchOpen}
         open={researchOpen}
       />
-      {floatingRect && selectedText && !session ? (
-        <Button
-          className="fixed z-30 h-8 w-8 rounded-full p-0 shadow-md"
-          onClick={runRewrite}
-          size="icon"
-          style={{ left: floatingRect.left, top: floatingRect.top }}
-          title="Rewrite selection"
-        >
-          <Wand2 className="h-4 w-4" />
-        </Button>
-      ) : null}
       <main className="mx-auto max-w-[840px] px-12 pb-24 pt-20">
         <div className="mb-10 max-w-[680px]">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
@@ -399,7 +422,9 @@ function EditorSurface({
           />
         </div>
         <section className={cn("lexi-editor", session && "select-none")}>
-          {editor ? <BubbleMenu editor={editor} /> : null}
+          {editor ? (
+            <BubbleMenu editor={editor} onRunTransform={runTransform} />
+          ) : null}
           <EditorContent editor={editor} />
         </section>
       </main>

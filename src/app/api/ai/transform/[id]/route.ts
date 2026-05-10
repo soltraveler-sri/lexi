@@ -5,6 +5,7 @@ import {
   getApiUser,
   isDocumentType,
   isVoiceContext,
+  notFound,
   readJsonObject,
   readOptionalString,
   readString,
@@ -14,7 +15,10 @@ import { resolveProviderForUser } from "@/lib/ai/resolver";
 import { streamingResponse } from "@/lib/ai/streaming";
 import { checkAiRateLimit } from "@/lib/ratelimit";
 import { compileVoiceProfile } from "@/lib/style/voiceProfile";
+import { getTransform } from "@/lib/transforms/registry";
+import "@/lib/transforms/inline";
 import type { CallTier, DocumentType, VoiceContext } from "@/types";
+import type { TransformPromptInput } from "@/lib/transforms/types";
 
 export const runtime = "nodejs";
 
@@ -22,20 +26,6 @@ const MAX_TEXT_LENGTH = 8000;
 const MAX_OUTPUT_TOKENS = 800;
 
 type Variant = "tighter" | "warmer" | "neutral";
-
-const VARIANT_INSTRUCTION: Record<Variant, string> = {
-  tighter:
-    "Bias your rewrite toward a tighter, more direct cadence. Cut hedges, trim filler, prefer plain verbs.",
-  warmer:
-    "Bias your rewrite toward a warmer, more conversational cadence. Keep the meaning steady; let the writing breathe.",
-  neutral: "",
-};
-
-const VARIANT_TEMPERATURE: Record<Variant, number> = {
-  tighter: 0.5,
-  warmer: 0.85,
-  neutral: 0.7,
-};
 
 function isVariant(value: unknown): value is Variant {
   return value === "tighter" || value === "warmer" || value === "neutral";
@@ -52,67 +42,58 @@ function truncate(text: string, length: number) {
   return text.slice(text.length - length);
 }
 
-function buildPrompt(input: {
-  beforeText: string;
-  surroundingBefore: string;
-  surroundingAfter: string;
-  documentType: DocumentType;
-  voiceContext: VoiceContext;
-  instruction: string | null;
-  variant: Variant;
-}) {
-  const lines: string[] = [];
-
-  lines.push(
-    `Document type: ${input.documentType.replace("_", " ")}`,
-    `Voice context: ${input.voiceContext.replace("_", " ")}`,
-  );
-
-  if (input.surroundingBefore.trim()) {
-    lines.push("", "Preceding context:", input.surroundingBefore.trim());
+function readParameterMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
   }
-
-  lines.push("", "Passage to rewrite:", input.beforeText.trim());
-
-  if (input.surroundingAfter.trim()) {
-    lines.push("", "Following context:", input.surroundingAfter.trim());
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === "string") {
+      out[key] = raw;
+    }
   }
-
-  lines.push(
-    "",
-    "Instructions:",
-    input.instruction?.trim() ||
-      "Rewrite the passage in the writer's voice while preserving meaning and continuity with surrounding context.",
-  );
-
-  if (VARIANT_INSTRUCTION[input.variant]) {
-    lines.push(VARIANT_INSTRUCTION[input.variant]);
-  }
-
-  lines.push(
-    "",
-    "Return only the rewritten passage. Do not include quotes, labels, explanations, or commentary.",
-  );
-
-  return lines.join("\n");
+  return out;
 }
 
-export async function POST(request: Request) {
-  const user = await getApiUser();
+function applyParameterDefaults(
+  transformParameters: { id: string; default?: string; options: { value: string }[] }[] | undefined,
+  provided: Record<string, string>,
+): Record<string, string> {
+  if (!transformParameters?.length) {
+    return provided;
+  }
+  const out = { ...provided };
+  for (const param of transformParameters) {
+    const value = out[param.id];
+    const allowed = param.options.map((option) => option.value);
+    if (!value || !allowed.includes(value)) {
+      out[param.id] = param.default ?? allowed[0];
+    }
+  }
+  return out;
+}
 
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } },
+) {
+  const user = await getApiUser();
   if (!user) {
     return unauthorized();
   }
 
-  const body = await readJsonObject(request);
+  const transform = getTransform(params.id);
+  if (!transform) {
+    return notFound();
+  }
 
+  const body = await readJsonObject(request);
   if (!body) {
     return badRequest("invalid_json");
   }
 
   const beforeText = readString(body, "beforeText").slice(0, MAX_TEXT_LENGTH);
-
-  if (!beforeText.trim()) {
+  if (transform.requiresSelection && !beforeText.trim()) {
     return badRequest("before_text_required");
   }
 
@@ -125,7 +106,6 @@ export async function POST(request: Request) {
     0,
     MAX_TEXT_LENGTH,
   );
-  const instruction = readOptionalString(body, "instruction");
   const documentType: DocumentType = isDocumentType(body.documentType)
     ? body.documentType
     : "blog_post";
@@ -135,9 +115,12 @@ export async function POST(request: Request) {
   const tier: CallTier = isCallTier(body.tier) ? body.tier : "heavy";
   const variant: Variant = isVariant(body.variant) ? body.variant : "neutral";
   const variantId = readOptionalString(body, "variantId");
+  const parameters = applyParameterDefaults(
+    transform.parameters,
+    readParameterMap(body.parameters),
+  );
 
   const resolved = await resolveProviderForUser(user.id);
-
   if (resolved.provider.id === "stub") {
     return NextResponse.json(
       {
@@ -163,10 +146,6 @@ export async function POST(request: Request) {
           rateLimit.reason === "hour"
             ? "AI request limit reached for the past hour. Try again later."
             : "Daily AI request limit reached. Try again tomorrow.",
-        usedLastHour: rateLimit.usedLastHour,
-        usedLastDay: rateLimit.usedLastDay,
-        limitPerHour: rateLimit.limitPerHour,
-        limitPerDay: rateLimit.limitPerDay,
       },
       {
         status: 429,
@@ -179,31 +158,32 @@ export async function POST(request: Request) {
 
   const profile = await compileVoiceProfile(user.id, voiceContext, tier, false);
 
-  const prompt = buildPrompt({
-    beforeText,
+  const promptInput: TransformPromptInput = {
+    selection: beforeText,
     surroundingBefore,
     surroundingAfter,
     documentType,
     voiceContext,
-    instruction,
-    variant,
-  });
+    parameters,
+    variantHint: transform.variantCount === 2 ? variant : undefined,
+  };
+  const built = transform.buildPrompt(promptInput);
 
   const stream = resolved.provider.stream({
     tier,
     system: profile.compiledSystemPrompt,
     cachedSystemBlocks: profile.cachedSystemBlocks,
-    prompt,
-    maxTokens: MAX_OUTPUT_TOKENS,
-    temperature: VARIANT_TEMPERATURE[variant],
+    prompt: built.prompt,
+    maxTokens: built.maxTokens ?? MAX_OUTPUT_TOKENS,
+    temperature: built.temperature,
     documentId: documentId ?? undefined,
-    transformId: "rewrite",
+    transformId: transform.id,
   });
 
   return streamingResponse(stream, {
     provider: resolved.provider.id,
     ownership: resolved.ownership,
-    transformId: "rewrite",
+    transformId: transform.id,
     variantId: variantId ?? variant,
   });
 }

@@ -13,17 +13,29 @@ import {
 import type { Editor, JSONContent } from "@tiptap/react";
 
 import { setRewriteStripPluginState } from "@/components/editor/extensions/RewriteStrip/commands";
+import { consumeTextStream } from "@/lib/ai/streaming";
 import type { RendererMode, DocumentType, VoiceContext } from "@/types";
 
 type RewriteStatus = "idle" | "drafting" | "committing" | "done" | "cancelled";
-type AiStatus = "idle" | "loading" | "ready" | "error";
+type AiStatus = "idle" | "loading" | "streaming" | "ready" | "error";
+
+export type VariantKey = "tighter" | "warmer";
+
+export interface VariantState {
+  key: VariantKey;
+  text: string;
+  edited: boolean;
+  status: AiStatus;
+  error: string | null;
+  finalSuggestion: string | null;
+  provider: string | null;
+}
 
 interface RewriteSession {
   id: string;
   status: RewriteStatus;
   mode: RendererMode;
   originalText: string;
-  input: string;
   range: { from: number; to: number };
   blockType: string;
   blockAttrs: Record<string, unknown>;
@@ -32,10 +44,13 @@ interface RewriteSession {
   rect: DOMRect | null;
   shake: boolean;
   fullDocumentText: string;
-  aiStatus: AiStatus;
-  aiError: string | null;
-  aiSuggestion: string | null;
-  aiProvider: string | null;
+  variants: Record<VariantKey, VariantState>;
+  focused: VariantKey;
+  /**
+   * Inline mode keeps two suggestion nodes; we need their per-variant ids to
+   * locate them when committing or cancelling.
+   */
+  variantNodeIds: Record<VariantKey, string>;
 }
 
 interface RewriteStripContextValue {
@@ -45,14 +60,29 @@ interface RewriteStripContextValue {
   beginFromSelection: () => void;
   commit: (advance?: boolean) => Promise<void>;
   cancel: () => void;
-  updateInput: (value: string) => void;
-  startFromOriginal: () => void;
+  updateVariant: (key: VariantKey, value: string) => void;
+  startFromOriginal: (key?: VariantKey) => void;
   setAutoAdvance: (value: boolean) => void;
   clearLastEventId: () => void;
-  requestAiSuggestion: () => Promise<void>;
+  focusVariant: (key: VariantKey) => void;
+  retryStreaming: () => void;
 }
 
 const RewriteStripContext = createContext<RewriteStripContextValue | null>(null);
+
+const VARIANT_KEYS: VariantKey[] = ["tighter", "warmer"];
+
+function emptyVariant(key: VariantKey): VariantState {
+  return {
+    key,
+    text: "",
+    edited: false,
+    status: "idle",
+    error: null,
+    finalSuggestion: null,
+    provider: null,
+  };
+}
 
 function getSelectionRect(editor: Editor) {
   const { from, to } = editor.state.selection;
@@ -94,14 +124,20 @@ function contentForReplacement(
   }));
 }
 
-function findInlineStripRange(editor: Editor, rewriteId: string) {
+function findInlineStripRange(
+  editor: Editor,
+  rewriteId: string,
+  variantNodeIds: string[],
+) {
+  const ids = new Set([rewriteId, ...variantNodeIds]);
   let from: number | null = null;
   let to: number | null = null;
 
   editor.state.doc.descendants((node, pos) => {
     if (
       (node.type.name === "lockedOriginal" || node.type.name === "rewriteInput") &&
-      node.attrs.rewriteId === rewriteId
+      typeof node.attrs.rewriteId === "string" &&
+      ids.has(node.attrs.rewriteId)
     ) {
       from = from === null ? pos : Math.min(from, pos);
       to = to === null ? pos + node.nodeSize : Math.max(to, pos + node.nodeSize);
@@ -147,6 +183,10 @@ export function RewriteStripProvider({
   const [lastEventId, setLastEventId] = useState<string | null>(null);
   const [aiAvailable, setAiAvailable] = useState(false);
   const sessionRef = useRef<RewriteSession | null>(null);
+  const streamControllers = useRef<Record<VariantKey, AbortController | null>>({
+    tighter: null,
+    warmer: null,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -159,7 +199,7 @@ export function RewriteStripProvider({
         }
       })
       .catch(() => {
-        // Silent: the AI button just stays hidden if status can't be fetched.
+        // Silent: AI button stays hidden if status can't be fetched.
       });
 
     return () => {
@@ -171,8 +211,31 @@ export function RewriteStripProvider({
     sessionRef.current = session;
   }, [session]);
 
+  const abortAllStreams = useCallback(() => {
+    for (const key of VARIANT_KEYS) {
+      streamControllers.current[key]?.abort();
+      streamControllers.current[key] = null;
+    }
+  }, []);
+
+  const updateVariantState = useCallback(
+    (key: VariantKey, updater: (variant: VariantState) => VariantState) => {
+      setSession((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          variants: { ...current.variants, [key]: updater(current.variants[key]) },
+        };
+      });
+    },
+    [],
+  );
+
   const clearSession = useCallback(
     (status: RewriteStatus) => {
+      abortAllStreams();
       if (editor) {
         editor.setEditable(true);
         setRewriteStripPluginState(editor, status, null);
@@ -181,7 +244,7 @@ export function RewriteStripProvider({
       sessionRef.current = null;
       setSession(null);
     },
-    [editor],
+    [abortAllStreams, editor],
   );
 
   const replaceInlineWithOriginal = useCallback(
@@ -190,7 +253,10 @@ export function RewriteStripProvider({
         return;
       }
 
-      const range = findInlineStripRange(editor, current.id);
+      const range = findInlineStripRange(editor, current.id, [
+        current.variantNodeIds.tighter,
+        current.variantNodeIds.warmer,
+      ]);
 
       if (!range) {
         return;
@@ -228,6 +294,99 @@ export function RewriteStripProvider({
     clearSession("cancelled");
   }, [clearSession, editor, replaceInlineWithOriginal]);
 
+  const streamVariant = useCallback(
+    async (key: VariantKey, current: RewriteSession) => {
+      const controller = new AbortController();
+      streamControllers.current[key]?.abort();
+      streamControllers.current[key] = controller;
+
+      updateVariantState(key, (variant) => ({
+        ...variant,
+        status: "loading",
+        error: null,
+        text: "",
+        finalSuggestion: null,
+        edited: false,
+      }));
+
+      try {
+        const response = await fetch("/api/ai/rewrite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId,
+            beforeText: current.originalText,
+            surroundingBefore: current.fullDocumentText.slice(
+              Math.max(0, current.range.from - 1500),
+              current.range.from,
+            ),
+            surroundingAfter: current.fullDocumentText.slice(
+              current.range.to,
+              current.range.to + 1500,
+            ),
+            documentType,
+            voiceContext,
+            tier: "heavy",
+            variant: key,
+            variantId: key,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            message?: string;
+            error?: string;
+          } | null;
+          updateVariantState(key, (variant) => ({
+            ...variant,
+            status: "error",
+            error:
+              payload?.message ||
+              payload?.error ||
+              `Request failed (${response.status}).`,
+          }));
+          return;
+        }
+
+        updateVariantState(key, (variant) => ({ ...variant, status: "streaming" }));
+
+        const result = await consumeTextStream(response, {
+          signal: controller.signal,
+          onChunk: (cumulative) => {
+            updateVariantState(key, (variant) =>
+              variant.edited ? variant : { ...variant, text: cumulative },
+            );
+          },
+        });
+
+        const finalText = result.text.trim();
+        updateVariantState(key, (variant) => ({
+          ...variant,
+          status: "ready",
+          finalSuggestion: finalText,
+          provider: result.meta?.provider ?? variant.provider,
+          text: variant.edited ? variant.text : finalText,
+        }));
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "Network error";
+        updateVariantState(key, (variant) => ({
+          ...variant,
+          status: "error",
+          error: message,
+        }));
+      } finally {
+        if (streamControllers.current[key] === controller) {
+          streamControllers.current[key] = null;
+        }
+      }
+    },
+    [documentId, documentType, voiceContext, updateVariantState],
+  );
+
   const beginFromSelection = useCallback(() => {
     if (!editor) {
       return;
@@ -246,6 +405,8 @@ export function RewriteStripProvider({
     }
 
     const id = crypto.randomUUID();
+    const tighterId = `${id}:tighter`;
+    const warmerId = `${id}:warmer`;
     const originalText = editor.state.doc.textBetween(from, to, "\n");
     const fullDocumentText = editor.state.doc.textBetween(
       0,
@@ -255,12 +416,16 @@ export function RewriteStripProvider({
     const blockType = $from.parent.type.name;
     const blockAttrs = { ...$from.parent.attrs };
     const rect = getSelectionRect(editor);
+    const variantStates: Record<VariantKey, VariantState> = {
+      tighter: emptyVariant("tighter"),
+      warmer: emptyVariant("warmer"),
+    };
+
     const nextSession: RewriteSession = {
       id,
       status: "drafting",
       mode: rendererMode,
       originalText,
-      input: "",
       range: { from, to },
       blockType,
       blockAttrs,
@@ -269,10 +434,9 @@ export function RewriteStripProvider({
       rect,
       shake: false,
       fullDocumentText,
-      aiStatus: "idle",
-      aiError: null,
-      aiSuggestion: null,
-      aiProvider: null,
+      variants: variantStates,
+      focused: "tighter",
+      variantNodeIds: { tighter: tighterId, warmer: warmerId },
     };
 
     if (rendererMode === "inline_strip") {
@@ -286,7 +450,11 @@ export function RewriteStripProvider({
           },
           {
             type: "rewriteInput",
-            attrs: { rewriteId: id },
+            attrs: { rewriteId: tighterId, variantKey: "tighter" },
+          },
+          {
+            type: "rewriteInput",
+            attrs: { rewriteId: warmerId, variantKey: "warmer" },
           },
         ])
         .run();
@@ -295,90 +463,98 @@ export function RewriteStripProvider({
     editor.setEditable(false);
     setRewriteStripPluginState(editor, "drafting", id);
     setSession(nextSession);
-  }, [cancel, editor, rendererMode]);
 
-  const updateInput = useCallback((value: string) => {
-    setSession((current) => (current ? { ...current, input: value } : current));
+    if (aiAvailable) {
+      void streamVariant("tighter", nextSession);
+      void streamVariant("warmer", nextSession);
+    }
+  }, [aiAvailable, cancel, editor, rendererMode, streamVariant]);
+
+  const updateVariant = useCallback(
+    (key: VariantKey, value: string) => {
+      updateVariantState(key, (variant) => ({
+        ...variant,
+        text: value,
+        edited: true,
+      }));
+    },
+    [updateVariantState],
+  );
+
+  const focusVariant = useCallback((key: VariantKey) => {
+    setSession((current) => (current ? { ...current, focused: key } : current));
   }, []);
 
-  const startFromOriginal = useCallback(() => {
-    setSession((current) =>
-      current ? { ...current, input: current.originalText } : current,
-    );
-  }, []);
+  const startFromOriginal = useCallback(
+    (key?: VariantKey) => {
+      setSession((current) => {
+        if (!current) {
+          return current;
+        }
+        const targets: VariantKey[] = key ? [key] : VARIANT_KEYS;
+        const variants = { ...current.variants };
+        for (const target of targets) {
+          variants[target] = {
+            ...variants[target],
+            text: current.originalText,
+            edited: true,
+          };
+        }
+        return { ...current, variants };
+      });
+    },
+    [],
+  );
 
   const setAutoAdvance = useCallback((value: boolean) => {
     setSession((current) => (current ? { ...current, autoAdvance: value } : current));
   }, []);
 
-  const requestAiSuggestion = useCallback(async () => {
+  const retryStreaming = useCallback(() => {
     const current = sessionRef.current;
-
-    if (!current) {
+    if (!current || !aiAvailable) {
       return;
     }
+    void streamVariant("tighter", current);
+    void streamVariant("warmer", current);
+  }, [aiAvailable, streamVariant]);
 
-    setSession((existing) =>
-      existing ? { ...existing, aiStatus: "loading", aiError: null } : existing,
-    );
+  const recordRejectedVariant = useCallback(
+    async (current: RewriteSession, rejectedKey: VariantKey) => {
+      const rejected = current.variants[rejectedKey];
+      const rejectedText = (rejected.finalSuggestion ?? rejected.text).trim();
+      if (!rejected || rejected.status !== "ready" || !rejectedText) {
+        return;
+      }
 
-    try {
-      const response = await fetch("/api/ai/rewrite", {
+      await fetch("/api/style-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentId,
+          eventType: "ai_suggestion_rejected",
           beforeText: current.originalText,
+          afterText: rejectedText,
           surroundingBefore: current.fullDocumentText.slice(
-            Math.max(0, current.range.from - 1500),
+            Math.max(0, current.range.from - 500),
             current.range.from,
           ),
           surroundingAfter: current.fullDocumentText.slice(
             current.range.to,
-            current.range.to + 1500,
+            current.range.to + 500,
           ),
           documentType,
           voiceContext,
-          tier: "heavy",
+          aiProvider: rejected.provider,
+          timeSpentMs: Date.now() - current.openedAt,
+          editTags: [`variant:${rejectedKey}`],
         }),
+      }).catch(() => {
+        // Silently swallow — the rejected event is a nice-to-have signal.
       });
-
-      const payload = (await response.json().catch(() => null)) as {
-        suggestion?: string;
-        provider?: string;
-        error?: string;
-        message?: string;
-      } | null;
-
-      if (!response.ok || !payload?.suggestion) {
-        const message =
-          payload?.message || payload?.error || `Request failed (${response.status}).`;
-        setSession((existing) =>
-          existing ? { ...existing, aiStatus: "error", aiError: message } : existing,
-        );
-        return;
-      }
-
-      const suggestion = payload.suggestion.trim();
-      setSession((existing) =>
-        existing
-          ? {
-              ...existing,
-              aiStatus: "ready",
-              aiError: null,
-              aiSuggestion: suggestion,
-              aiProvider: payload.provider ?? null,
-              input: suggestion,
-            }
-          : existing,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Network error";
-      setSession((existing) =>
-        existing ? { ...existing, aiStatus: "error", aiError: message } : existing,
-      );
-    }
-  }, [documentId, documentType, voiceContext]);
+    },
+    [documentId, documentType, voiceContext],
+  );
 
   const commit = useCallback(
     async (advance = false) => {
@@ -388,7 +564,9 @@ export function RewriteStripProvider({
         return;
       }
 
-      const replacementText = current.input.trim();
+      const focused = current.focused;
+      const focusedVariant = current.variants[focused];
+      const replacementText = focusedVariant.text.trim();
 
       if (!replacementText) {
         setSession((existing) => (existing ? { ...existing, shake: true } : existing));
@@ -402,13 +580,17 @@ export function RewriteStripProvider({
         return;
       }
 
+      abortAllStreams();
       setSession({ ...current, status: "committing" });
       setRewriteStripPluginState(editor, "committing", current.id);
       editor.setEditable(true);
 
       const replaceRange =
         current.mode === "inline_strip"
-          ? (findInlineStripRange(editor, current.id) ?? current.range)
+          ? (findInlineStripRange(editor, current.id, [
+              current.variantNodeIds.tighter,
+              current.variantNodeIds.warmer,
+            ]) ?? current.range)
           : current.range;
 
       editor
@@ -420,9 +602,9 @@ export function RewriteStripProvider({
         )
         .run();
 
-      const usedAi = Boolean(current.aiSuggestion);
+      const usedAi = focusedVariant.status === "ready" && focusedVariant.finalSuggestion;
       const eventType = usedAi
-        ? current.aiSuggestion === replacementText
+        ? focusedVariant.finalSuggestion === replacementText
           ? "ai_suggestion_accepted"
           : "ai_suggestion_edited"
         : "rewrite";
@@ -445,8 +627,9 @@ export function RewriteStripProvider({
           ),
           documentType,
           voiceContext,
-          aiProvider: current.aiProvider,
+          aiProvider: focusedVariant.provider,
           timeSpentMs: Date.now() - current.openedAt,
+          editTags: usedAi ? [`variant:${focused}`] : [],
         }),
       });
 
@@ -459,6 +642,9 @@ export function RewriteStripProvider({
           setLastEventId(payload.event.id);
         }
       }
+
+      const rejectedKey: VariantKey = focused === "tighter" ? "warmer" : "tighter";
+      void recordRejectedVariant(current, rejectedKey);
 
       clearSession("done");
 
@@ -473,7 +659,16 @@ export function RewriteStripProvider({
         }
       }
     },
-    [beginFromSelection, clearSession, documentId, documentType, editor, voiceContext],
+    [
+      abortAllStreams,
+      beginFromSelection,
+      clearSession,
+      documentId,
+      documentType,
+      editor,
+      recordRejectedVariant,
+      voiceContext,
+    ],
   );
 
   useEffect(() => {
@@ -485,17 +680,37 @@ export function RewriteStripProvider({
       if (event.key === "Escape") {
         event.preventDefault();
         cancel();
+        return;
       }
 
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
         void commit(event.shiftKey);
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key === "1") {
+        event.preventDefault();
+        focusVariant("tighter");
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key === "2") {
+        event.preventDefault();
+        focusVariant("warmer");
+        return;
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cancel, commit]);
+  }, [cancel, commit, focusVariant]);
+
+  useEffect(() => {
+    return () => {
+      abortAllStreams();
+    };
+  }, [abortAllStreams]);
 
   const value = useMemo<RewriteStripContextValue>(
     () => ({
@@ -505,23 +720,25 @@ export function RewriteStripProvider({
       beginFromSelection,
       commit,
       cancel,
-      updateInput,
+      updateVariant,
       startFromOriginal,
       setAutoAdvance,
       clearLastEventId: () => setLastEventId(null),
-      requestAiSuggestion,
+      focusVariant,
+      retryStreaming,
     }),
     [
       aiAvailable,
       beginFromSelection,
       cancel,
       commit,
+      focusVariant,
       lastEventId,
-      requestAiSuggestion,
+      retryStreaming,
       session,
       setAutoAdvance,
       startFromOriginal,
-      updateInput,
+      updateVariant,
     ],
   );
 
@@ -541,3 +758,13 @@ export function useRewriteStrip() {
 
   return context;
 }
+
+export const VARIANT_LABELS: Record<VariantKey, string> = {
+  tighter: "Tighter",
+  warmer: "Warmer",
+};
+
+export const VARIANT_HOTKEYS: Record<VariantKey, string> = {
+  tighter: "⌘1",
+  warmer: "⌘2",
+};

@@ -11,6 +11,7 @@ import {
   unauthorized,
 } from "@/lib/api";
 import { resolveProviderForUser } from "@/lib/ai/resolver";
+import { streamingResponse } from "@/lib/ai/streaming";
 import { checkAiRateLimit } from "@/lib/ratelimit";
 import { compileVoiceProfile } from "@/lib/style/voiceProfile";
 import type { CallTier, DocumentType, VoiceContext } from "@/types";
@@ -20,11 +21,34 @@ export const runtime = "nodejs";
 const MAX_TEXT_LENGTH = 8000;
 const MAX_OUTPUT_TOKENS = 800;
 
+type Variant = "tighter" | "warmer" | "neutral";
+
+const VARIANT_INSTRUCTION: Record<Variant, string> = {
+  tighter:
+    "Bias your rewrite toward a tighter, more direct cadence. Cut hedges, trim filler, prefer plain verbs.",
+  warmer:
+    "Bias your rewrite toward a warmer, more conversational cadence. Keep the meaning steady; let the writing breathe.",
+  neutral: "",
+};
+
+const VARIANT_TEMPERATURE: Record<Variant, number> = {
+  tighter: 0.5,
+  warmer: 0.85,
+  neutral: 0.7,
+};
+
+function isVariant(value: unknown): value is Variant {
+  return value === "tighter" || value === "warmer" || value === "neutral";
+}
+
+function isCallTier(value: unknown): value is CallTier {
+  return value === "light" || value === "heavy";
+}
+
 function truncate(text: string, length: number) {
   if (text.length <= length) {
     return text;
   }
-
   return text.slice(text.length - length);
 }
 
@@ -35,6 +59,7 @@ function buildPrompt(input: {
   documentType: DocumentType;
   voiceContext: VoiceContext;
   instruction: string | null;
+  variant: Variant;
 }) {
   const lines: string[] = [];
 
@@ -58,29 +83,18 @@ function buildPrompt(input: {
     "Instructions:",
     input.instruction?.trim() ||
       "Rewrite the passage in the writer's voice while preserving meaning and continuity with surrounding context.",
+  );
+
+  if (VARIANT_INSTRUCTION[input.variant]) {
+    lines.push(VARIANT_INSTRUCTION[input.variant]);
+  }
+
+  lines.push(
     "",
     "Return only the rewritten passage. Do not include quotes, labels, explanations, or commentary.",
   );
 
   return lines.join("\n");
-}
-
-function stripWrappingQuotes(text: string) {
-  const trimmed = text.trim();
-
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("“") && trimmed.endsWith("”")) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed;
-}
-
-function isCallTier(value: unknown): value is CallTier {
-  return value === "light" || value === "heavy";
 }
 
 export async function POST(request: Request) {
@@ -119,9 +133,9 @@ export async function POST(request: Request) {
     ? body.voiceContext
     : "universal";
   const tier: CallTier = isCallTier(body.tier) ? body.tier : "heavy";
+  const variant: Variant = isVariant(body.variant) ? body.variant : "neutral";
+  const variantId = readOptionalString(body, "variantId");
 
-  // Pre-flight: figure out which credential will be used so we can apply the
-  // correct rate-limit tier (BYOK vs app-owned env fallback) before calling out.
   const resolved = await resolveProviderForUser(user.id);
 
   if (resolved.provider.id === "stub") {
@@ -172,37 +186,24 @@ export async function POST(request: Request) {
     documentType,
     voiceContext,
     instruction,
+    variant,
   });
 
-  try {
-    const response = await resolved.provider.complete({
-      tier,
-      system: profile.compiledSystemPrompt,
-      cachedSystemBlocks: profile.cachedSystemBlocks,
-      prompt,
-      maxTokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.7,
-      documentId: documentId ?? undefined,
-      transformId: "rewrite",
-    });
+  const stream = resolved.provider.stream({
+    tier,
+    system: profile.compiledSystemPrompt,
+    cachedSystemBlocks: profile.cachedSystemBlocks,
+    prompt,
+    maxTokens: MAX_OUTPUT_TOKENS,
+    temperature: VARIANT_TEMPERATURE[variant],
+    documentId: documentId ?? undefined,
+    transformId: "rewrite",
+  });
 
-    const suggestion = stripWrappingQuotes(response.text);
-
-    return NextResponse.json({
-      suggestion,
-      provider: resolved.provider.id,
-      ownership: resolved.ownership,
-      usage: response.usage,
-      rateLimit: {
-        usedLastHour: rateLimit.usedLastHour + 1,
-        usedLastDay: rateLimit.usedLastDay + 1,
-        limitPerHour: rateLimit.limitPerHour,
-        limitPerDay: rateLimit.limitPerDay,
-        bypassReason: rateLimit.bypassReason ?? null,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "ai_call_failed";
-    return NextResponse.json({ error: "ai_call_failed", message }, { status: 502 });
-  }
+  return streamingResponse(stream, {
+    provider: resolved.provider.id,
+    ownership: resolved.ownership,
+    transformId: "rewrite",
+    variantId: variantId ?? variant,
+  });
 }

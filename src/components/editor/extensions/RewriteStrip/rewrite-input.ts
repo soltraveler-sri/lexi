@@ -14,6 +14,9 @@ export const RewriteInput = Node.create({
       rewriteId: {
         default: null,
       },
+      variantKey: {
+        default: null,
+      },
     };
   },
 
@@ -28,6 +31,7 @@ export const RewriteInput = Node.create({
         ...HTMLAttributes,
         "data-rewrite-input": "true",
         "data-rewrite-id": HTMLAttributes.rewriteId,
+        "data-variant-key": HTMLAttributes.variantKey,
         class: "rewrite-input-node rewrite-strip-active",
       },
     ];

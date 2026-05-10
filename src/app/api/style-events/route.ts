@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     note: readOptionalString(body, "note"),
     aiPrompt: readOptionalString(body, "aiPrompt"),
     aiProvider: readOptionalString(body, "aiProvider"),
+    agentId: readOptionalString(body, "agentId"),
     timeSpentMs: readNumber(body, "timeSpentMs", 0),
   });
 

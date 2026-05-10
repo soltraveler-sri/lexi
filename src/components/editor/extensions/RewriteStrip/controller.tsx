@@ -36,6 +36,27 @@ export interface InlineTransformConfig {
   transformName: string;
   variantCount: 1 | 2;
   parameters: Record<string, string>;
+  /**
+   * Optional override URL for the streaming run. Agents reuse the strip via
+   * `/api/agents/[id]/run`; default transforms post to
+   * `/api/ai/transform/[id]`.
+   */
+  runUrl?: string;
+  /**
+   * Optional override of the request body shape. Agents send `text` + `scope`;
+   * default transforms send `beforeText` + variant config.
+   */
+  buildRequestBody?: (input: {
+    selection: string;
+    surroundingBefore: string;
+    surroundingAfter: string;
+    documentId: string;
+    documentType: string;
+    voiceContext: string;
+    variant: VariantKey;
+  }) => Record<string, unknown>;
+  /** When set, accepted commits stamp `style_events.agent_id`. */
+  agentId?: string;
 }
 
 interface RewriteSession {
@@ -314,32 +335,47 @@ export function RewriteStripProvider({
       }));
 
       try {
-        const response = await fetch(
-          `/api/ai/transform/${current.transform.transformId}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+        const surroundingBefore = current.fullDocumentText.slice(
+          Math.max(0, current.range.from - 1500),
+          current.range.from,
+        );
+        const surroundingAfter = current.fullDocumentText.slice(
+          current.range.to,
+          current.range.to + 1500,
+        );
+
+        const url =
+          current.transform.runUrl ??
+          `/api/ai/transform/${current.transform.transformId}`;
+        const body = current.transform.buildRequestBody
+          ? current.transform.buildRequestBody({
+              selection: current.originalText,
+              surroundingBefore,
+              surroundingAfter,
+              documentId,
+              documentType,
+              voiceContext,
+              variant: key,
+            })
+          : {
               documentId,
               beforeText: current.originalText,
-              surroundingBefore: current.fullDocumentText.slice(
-                Math.max(0, current.range.from - 1500),
-                current.range.from,
-              ),
-              surroundingAfter: current.fullDocumentText.slice(
-                current.range.to,
-                current.range.to + 1500,
-              ),
+              surroundingBefore,
+              surroundingAfter,
               documentType,
               voiceContext,
               tier: "heavy",
               variant: key,
               variantId: key,
               parameters: current.transform.parameters,
-            }),
-            signal: controller.signal,
-          },
-        );
+            };
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           const payload = (await response.json().catch(() => null)) as {
@@ -658,6 +694,7 @@ export function RewriteStripProvider({
           documentType,
           voiceContext,
           aiProvider: focusedVariant.provider,
+          agentId: current.transform.agentId ?? null,
           timeSpentMs: Date.now() - current.openedAt,
           editTags: usedAi ? [`variant:${focused}`] : [],
         }),

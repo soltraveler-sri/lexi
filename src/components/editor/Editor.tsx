@@ -7,11 +7,14 @@ import Link from "@tiptap/extension-link";
 import { Check, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { AgentResponsePanel, type AgentResponseSession } from "@/components/editor/AgentResponsePanel";
 import { BlankDocCTA, shouldShowBlankCta } from "@/components/editor/BlankDocCTA";
 import { BubbleMenu } from "@/components/editor/BubbleMenu";
 import { DocTransformPanel } from "@/components/editor/DocTransformPanel";
 import { EditTagToast } from "@/components/editor/EditTagToast";
 import { SpotlightOverlay } from "@/components/editor/SpotlightOverlay";
+import type { AgentListItem } from "@/components/journal/AgentsRoster";
+import { consumeTextStream } from "@/lib/ai/streaming";
 import {
   RewriteStripProvider,
   useRewriteStrip,
@@ -24,6 +27,14 @@ import {
 import { ExemplarMark } from "@/components/editor/extensions/ExemplarMark";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { AdHocResearch } from "@/components/research/AdHocResearch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Transform } from "@/lib/transforms/types";
 import { getTransform } from "@/lib/transforms/registry";
 import "@/lib/transforms/inline";
@@ -167,6 +178,26 @@ function EditorSurface({
     "blank-cta" | "doc-action"
   >("doc-action");
   const [currentWordCount, setCurrentWordCount] = useState(0);
+  const [agents, setAgents] = useState<AgentListItem[]>([]);
+  const [agentSession, setAgentSession] = useState<AgentResponseSession | null>(
+    null,
+  );
+  const agentAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/agents")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { agents?: AgentListItem[] } | null) => {
+        if (!cancelled && Array.isArray(payload?.agents)) {
+          setAgents(payload!.agents);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const { activeDocumentId, setActiveDocumentId, toggleSidebar } = useWorkspaceStore();
   const { session, lastEventId, beginFromSelection, clearLastEventId } =
     useRewriteStrip();
@@ -272,6 +303,147 @@ function EditorSurface({
       runTransform(transform, stringParams);
     },
     [runTransform],
+  );
+
+  const runAgentOnText = useCallback(
+    async (agent: AgentListItem, scope: "selection" | "document", text: string) => {
+      agentAbortRef.current?.abort();
+      const controller = new AbortController();
+      agentAbortRef.current = controller;
+
+      setAgentSession({
+        agentId: agent.id,
+        agentName: agent.name,
+        scope,
+        status: "loading",
+        text: "",
+        error: null,
+      });
+
+      try {
+        const response = await fetch(`/api/agents/${agent.id}/run`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scope,
+            text,
+            documentId: document.id,
+            documentType: document.type,
+            voiceContext: document.voiceContext,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as
+            | { message?: string; error?: string }
+            | null;
+          setAgentSession((current) =>
+            current && current.agentId === agent.id
+              ? {
+                  ...current,
+                  status: "error",
+                  error: payload?.message ?? payload?.error ?? "Agent failed.",
+                }
+              : current,
+          );
+          return;
+        }
+
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "streaming" }
+            : current,
+        );
+
+        const result = await consumeTextStream(response, {
+          signal: controller.signal,
+          onChunk: (cumulative) => {
+            setAgentSession((current) =>
+              current && current.agentId === agent.id
+                ? { ...current, text: cumulative }
+                : current,
+            );
+          },
+        });
+
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "ready", text: result.text }
+            : current,
+        );
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "Network error";
+        setAgentSession((current) =>
+          current && current.agentId === agent.id
+            ? { ...current, status: "error", error: message }
+            : current,
+        );
+      }
+    },
+    [document.id, document.type, document.voiceContext],
+  );
+
+  const runAgentOnSelection = useCallback(
+    (agent: AgentListItem) => {
+      if (!editor) {
+        return;
+      }
+      const { from, to, empty } = editor.state.selection;
+      if (empty || from === to) {
+        return;
+      }
+      const text = editor.state.doc.textBetween(from, to, "\n");
+
+      if (agent.outputKind === "rewrite") {
+        // Rewrite-shape agents reuse the strip controller via a runUrl override
+        // so the user gets the same accept/edit/replace flow. Single variant.
+        beginFromSelection({
+          transformId: `agent:${agent.id}`,
+          transformName: agent.name,
+          variantCount: 1,
+          parameters: {},
+          runUrl: `/api/agents/${agent.id}/run`,
+          buildRequestBody: ({ selection }) => ({
+            scope: "selection",
+            text: selection,
+            documentId: document.id,
+            documentType: document.type,
+            voiceContext: document.voiceContext,
+          }),
+          agentId: agent.id,
+        });
+        return;
+      }
+
+      void runAgentOnText(agent, "selection", text);
+    },
+    [
+      beginFromSelection,
+      document.id,
+      document.type,
+      document.voiceContext,
+      editor,
+      runAgentOnText,
+    ],
+  );
+
+  const runAgentOnDocument = useCallback(
+    (agent: AgentListItem) => {
+      if (!editor) {
+        return;
+      }
+      const text = editor.state.doc.textBetween(
+        0,
+        editor.state.doc.content.size,
+        "\n",
+      );
+      void runAgentOnText(agent, "document", text);
+    },
+    [editor, runAgentOnText],
   );
 
   const createDocument = useCallback(async () => {
@@ -450,20 +622,61 @@ function EditorSurface({
         triggerSource={docTransformSource}
         voiceContext={document.voiceContext}
       />
+      <AgentResponsePanel
+        onClose={() => {
+          agentAbortRef.current?.abort();
+          agentAbortRef.current = null;
+          setAgentSession(null);
+        }}
+        session={agentSession}
+      />
       <main className="mx-auto max-w-[840px] px-12 pb-24 pt-20">
         <div className="mb-10 max-w-[680px]">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
             <PencilLine className="h-3.5 w-3.5" />
             <span>{document.type.replace("_", " ")}</span>
             <span className="ml-auto flex items-center gap-3 normal-case tracking-normal">
-              <button
-                className="rounded-sm px-2 py-0.5 text-accent-hover hover:bg-accent-soft"
-                onClick={() => openDocTransform("draft", "doc-action")}
-                title="Run a doc-level transform"
-                type="button"
-              >
-                ✨ Doc actions
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="rounded-sm px-2 py-0.5 text-accent-hover hover:bg-accent-soft"
+                    title="Run a doc-level action"
+                    type="button"
+                  >
+                    ✨ Doc actions
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Transforms</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() => openDocTransform("draft", "doc-action")}
+                  >
+                    Stream of consciousness → Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => openDocTransform("outline", "doc-action")}
+                  >
+                    Stream of consciousness → Outline
+                  </DropdownMenuItem>
+                  {agents.length > 0 ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Run agent on document</DropdownMenuLabel>
+                      {agents.map((agent) => (
+                        <DropdownMenuItem
+                          key={agent.id}
+                          onSelect={() => runAgentOnDocument(agent)}
+                        >
+                          {agent.name}
+                          <span className="ml-auto text-xs text-text-faint">
+                            {agent.outputKind}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <SaveIndicator state={saveState} />
               <button
                 className="rounded-sm px-2 py-0.5 text-text-muted hover:bg-surface-sunken hover:text-text"
@@ -491,7 +704,12 @@ function EditorSurface({
         ) : null}
         <section className={cn("lexi-editor", session && "select-none")}>
           {editor ? (
-            <BubbleMenu editor={editor} onRunTransform={runTransform} />
+            <BubbleMenu
+              agents={agents}
+              editor={editor}
+              onRunAgent={runAgentOnSelection}
+              onRunTransform={runTransform}
+            />
           ) : null}
           <EditorContent editor={editor} />
         </section>

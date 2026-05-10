@@ -13,11 +13,14 @@ import {
   List,
   ListOrdered,
   Quote,
+  UserRoundCog,
   Wand2,
 } from "lucide-react";
 
+import { AgentPickerMenu } from "@/components/editor/AgentPickerMenu";
 import { TransformShelf } from "@/components/editor/TransformShelf";
 import { Button } from "@/components/ui/button";
+import type { AgentListItem } from "@/components/journal/AgentsRoster";
 import type { Transform } from "@/lib/transforms/types";
 import { cn } from "@/lib/utils";
 
@@ -50,11 +53,16 @@ function ToolButton({
 export function BubbleMenu({
   editor,
   onRunTransform,
+  agents,
+  onRunAgent,
 }: {
   editor: Editor;
   onRunTransform: (transform: Transform, parameters: Record<string, string>) => void;
+  agents: AgentListItem[];
+  onRunAgent: (agent: AgentListItem) => void;
 }) {
   const [shelfOpen, setShelfOpen] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
 
   return (
     <TipTapBubbleMenu
@@ -66,9 +74,22 @@ export function BubbleMenu({
         <ToolButton
           active={shelfOpen}
           label="Transforms"
-          onClick={() => setShelfOpen((open) => !open)}
+          onClick={() => {
+            setShelfOpen((open) => !open);
+            setAgentsOpen(false);
+          }}
         >
           <Wand2 className="h-4 w-4" />
+        </ToolButton>
+        <ToolButton
+          active={agentsOpen}
+          label="Run with agent"
+          onClick={() => {
+            setAgentsOpen((open) => !open);
+            setShelfOpen(false);
+          }}
+        >
+          <UserRoundCog className="h-4 w-4" />
         </ToolButton>
         <span className="mx-1 h-5 w-px bg-border" />
         <ToolButton
@@ -151,6 +172,14 @@ export function BubbleMenu({
         <TransformShelf
           onClose={() => setShelfOpen(false)}
           onRun={onRunTransform}
+        />
+      ) : null}
+      {agentsOpen ? (
+        <AgentPickerMenu
+          agents={agents}
+          onClose={() => setAgentsOpen(false)}
+          onPick={onRunAgent}
+          scopeLabel="selection"
         />
       ) : null}
     </TipTapBubbleMenu>

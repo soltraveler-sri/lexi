@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacyStyleRedirect() {
+export default function JournalIndex() {
   redirect("/journal/style-guide");
 }

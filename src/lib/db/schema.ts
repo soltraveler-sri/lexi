@@ -297,6 +297,21 @@ export const userSettings = pgTable(
   }),
 );
 
+export const notes = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    content: text("content").notNull().default(""),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: uniqueIndex("notes_user_id_key").on(table.userId),
+  }),
+);
+
 export const usageEvents = pgTable(
   "usage_events",
   {
@@ -376,3 +391,5 @@ export type UserSetting = typeof userSettings.$inferSelect;
 export type UserSettingInsert = typeof userSettings.$inferInsert;
 export type UsageEvent = typeof usageEvents.$inferSelect;
 export type UsageEventInsert = typeof usageEvents.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type NoteInsert = typeof notes.$inferInsert;

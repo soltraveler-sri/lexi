@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Settings, Sparkles } from "lucide-react";
+import { BookOpen, LogOut, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { NewDocumentButton } from "@/components/library/NewDocumentButton";
@@ -93,9 +93,9 @@ export function Sidebar({
         />
       </div>
       <footer className="flex items-center justify-between border-t border-border p-3">
-        <Button asChild size="icon" title="Style Profile" variant="ghost">
-          <Link href="/style">
-            <Sparkles className="h-4 w-4" />
+        <Button asChild size="icon" title="Journal" variant="ghost">
+          <Link href="/journal/style-guide">
+            <BookOpen className="h-4 w-4" />
           </Link>
         </Button>
         <Button asChild size="icon" title="Settings" variant="ghost">

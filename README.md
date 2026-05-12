@@ -38,7 +38,7 @@ Stack: Next.js 14 (App Router) · TypeScript · Supabase (Auth + Postgres + RLS)
 
 1. Create a Supabase project.
 2. Enable Google OAuth in Auth settings, add your callback URL: `<your-app-url>/auth/callback`.
-3. Apply migrations in `supabase/migrations/` in numeric order. The latest is `0003_encrypt_user_credentials.sql`.
+3. Apply migrations in `supabase/migrations/` in numeric order. The latest is `0005_usage_events_ownership_backfill.sql`.
 
 ### 2. Local
 

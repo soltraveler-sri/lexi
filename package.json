@@ -9,7 +9,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --check .",
-    "migrate-credentials": "node scripts/migrate-credentials.mjs"
+    "migrate-credentials": "node scripts/migrate-credentials.mjs",
+    "db:migrate": "drizzle-kit migrate",
+    "build:vercel": "pnpm db:migrate && pnpm build"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",

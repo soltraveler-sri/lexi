@@ -53,7 +53,11 @@ pnpm dev
 
 ### 3. Deploy to Vercel
 
-Connect your fork to Vercel and set the same env vars in the project dashboard. If you want the deployment to be effectively single-tenant (just you), set `LEXI_ALLOWED_EMAILS` to your Google address — anyone else who signs in is rejected and pointed back at the README.
+Connect your fork to Vercel and set the same env vars in the project dashboard.
+
+For automatic DB migrations on each deploy, set the Vercel **Build Command** to `pnpm run build:vercel`. That command runs `drizzle-kit migrate` against `DATABASE_URL` before `next build`, so SQL files in `supabase/migrations/` are applied during deployment (instead of manual Neon runs).
+
+If you want the deployment to be effectively single-tenant (just you), set `LEXI_ALLOWED_EMAILS` to your Google address — anyone else who signs in is rejected and pointed back at the README.
 
 ### Environment variables
 

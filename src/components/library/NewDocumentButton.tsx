@@ -24,12 +24,12 @@ export function NewDocumentButton() {
 
   return (
     <Button
-      className="w-full justify-start"
+      className="w-full justify-start gap-2 text-text"
       onClick={() => void createDocument()}
       variant="secondary"
     >
-      <Plus className="h-4 w-4" />
-      New document
+      <Plus className="h-4 w-4 text-text-muted" />
+      New entry
     </Button>
   );
 }

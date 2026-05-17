@@ -269,7 +269,7 @@ export function AgentPersonaWalkthrough({ mode }: { mode: "brief" | "deep" }) {
   if (stage === "error" || !draft) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-red-600">{error ?? "Something went wrong."}</p>
+        <p className="text-sm text-danger">{error ?? "Something went wrong."}</p>
         <Button onClick={() => router.push("/journal/style-guide")}>
           Back to Style Guide
         </Button>
@@ -393,7 +393,7 @@ export function AgentPersonaWalkthrough({ mode }: { mode: "brief" | "deep" }) {
           value={testInput}
         />
         {testError ? (
-          <p className="text-sm text-red-600">{testError}</p>
+          <p className="text-sm text-danger">{testError}</p>
         ) : null}
         {testOutput ? (
           <pre className="whitespace-pre-wrap rounded-sm bg-surface-sunken p-3 text-sm">

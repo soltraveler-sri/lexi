@@ -26,31 +26,38 @@ function LoginContent() {
   }
 
   return (
-    <section className="w-full max-w-md rounded-lg border border-border bg-surface p-8 shadow-lg">
-      <div className="mb-8 text-center">
-        <h1 className="font-display text-5xl font-semibold text-text">lexi</h1>
-        <p className="mt-3 text-sm leading-6 text-text-muted">
-          A private writing workspace for line-by-line rewrites and a growing voice
-          profile.
+    <section className="w-full max-w-[420px]">
+      <div className="mb-10">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">
+          A writing workspace
+        </p>
+        <h1 className="mt-3 inline-flex items-baseline gap-2 font-display text-[88px] font-normal leading-none tracking-tight text-accent">
+          lexi
+          <span className="font-display text-[22px] italic font-normal text-text-faint">
+            n.
+          </span>
+        </h1>
+        <p className="mt-6 max-w-sm text-sm leading-6 text-text-muted">
+          A private place to write, with line-by-line rewrites in your voice and
+          a slow record of the lexicon you actually use.
         </p>
       </div>
       {error === "not_allowed" ? (
-        <p className="mb-4 rounded-md border border-border bg-bg p-3 text-sm leading-6 text-text-muted">
-          This deployment is restricted to specific accounts. lexi is open
-          source — you can run it locally with your own API keys. Get the code
-          at{" "}
+        <p className="mb-6 border-l-2 border-accent-2 bg-accent-2-soft/40 px-4 py-3 text-sm leading-6 text-text-muted">
+          This deployment is restricted to specific accounts. Lexi is open
+          source — run it locally with your own keys at{" "}
           <a
+            className="text-accent underline underline-offset-2"
             href="https://github.com/soltraveler-sri/lexi"
-            target="_blank"
             rel="noreferrer"
-            className="text-text underline underline-offset-2"
+            target="_blank"
           >
             github.com/soltraveler-sri/lexi
           </a>
           .
         </p>
       ) : null}
-      <Button className="w-full" onClick={continueWithGoogle}>
+      <Button className="w-fit" onClick={continueWithGoogle}>
         <Chrome className="h-4 w-4" />
         Continue with Google
       </Button>
@@ -60,7 +67,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg px-6">
+    <main className="flex min-h-screen items-center bg-bg px-12">
       <Suspense fallback={null}>
         <LoginContent />
       </Suspense>

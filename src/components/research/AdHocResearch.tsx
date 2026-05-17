@@ -157,7 +157,7 @@ export function AdHocResearch({
             {loading ? "Searching…" : "Search"}
           </Button>
         </form>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
         {queryUsed && !error ? (
           <p className="text-xs text-text-faint">
             via {provider ?? "web search"} — {queryUsed}

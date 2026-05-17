@@ -11,19 +11,23 @@ export default async function JournalLayout({
   await requireUser();
 
   return (
-    <main className="min-h-screen bg-bg px-12 py-12">
+    <main className="min-h-screen bg-bg px-12 py-14">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-8">
-          <p className="text-xs uppercase tracking-wide text-text-faint">Lexi</p>
-          <h1 className="mt-1 font-display text-5xl font-semibold text-text">Journal</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">
-            Home base for your writing identity — preferences, exemplars,
-            agents, reflections, and meta-notes. Calmer than your inbox; more
-            durable than a slack channel.
+        <header className="mb-2">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">
+            Lexi
           </p>
-          <JournalNav />
+          <h1 className="mt-2 font-display text-[52px] font-normal leading-none tracking-tight text-text">
+            Journal
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-text-muted">
+            The back rooms of the workshop. Voice, exemplars, agents, marginalia,
+            and the slow record of how you sound — kept here so the page stays
+            for the page.
+          </p>
         </header>
-        {children}
+        <JournalNav />
+        <div className="mt-10">{children}</div>
       </div>
     </main>
   );

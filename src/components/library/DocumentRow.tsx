@@ -30,20 +30,24 @@ export function DocumentRow({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="group flex items-center rounded-sm">
+    <div className="group relative flex items-center rounded-sm">
       <Link
         className={`min-w-0 flex-1 rounded-sm px-2 py-1.5 text-sm transition-colors ${
-          active ? "bg-accent-soft text-text" : "hover:bg-surface-sunken"
+          active
+            ? "bg-accent-soft text-text"
+            : "text-text-muted hover:bg-surface-sunken hover:text-text"
         }`}
         href={`/workspace/${document.id}`}
       >
-        <div className="truncate">{document.title || "Untitled"}</div>
-        <div className="truncate text-xs text-text-faint">
+        <div className="truncate leading-snug">
+          {document.title || "Untitled"}
+        </div>
+        <div className="truncate text-[11px] tracking-wide text-text-faint">
           {formatDate(document.updatedAt)}
         </div>
       </Link>
       <DropdownMenu>
-        <DropdownMenuTrigger className="mr-1 hidden h-7 w-7 items-center justify-center rounded-sm text-text-faint hover:bg-surface group-hover:flex">
+        <DropdownMenuTrigger className="absolute right-1 top-1 hidden h-7 w-7 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-surface hover:text-text group-hover:flex">
           <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

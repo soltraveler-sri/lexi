@@ -347,7 +347,7 @@ export function DocTransformPanel({
           </div>
         ) : null}
         {run.status === "error" ? (
-          <div className="space-y-2 rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="space-y-2 rounded-sm border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
             <p>{run.error}</p>
             <Button onClick={discard} variant="ghost" size="sm">
               Close

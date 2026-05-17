@@ -21,6 +21,10 @@ const config: Config = {
         accent: "var(--color-accent)",
         "accent-hover": "var(--color-accent-hover)",
         "accent-soft": "var(--color-accent-soft)",
+        "accent-contrast": "var(--color-accent-contrast)",
+        "accent-2": "var(--color-accent-2)",
+        "accent-2-hover": "var(--color-accent-2-hover)",
+        "accent-2-soft": "var(--color-accent-2-soft)",
         danger: "var(--color-danger)",
         success: "var(--color-success)",
         background: "var(--color-bg)",
@@ -31,6 +35,7 @@ const config: Config = {
         serif: ["var(--font-display)", "ui-serif", "Georgia", "serif"],
         ui: ["var(--font-ui)", "ui-sans-serif", "system-ui", "sans-serif"],
         sans: ["var(--font-ui)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderRadius: {
         sm: "var(--radius-sm)",

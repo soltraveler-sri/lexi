@@ -121,10 +121,10 @@ function SaveIndicator({ state }: { state: SaveState }) {
   }, [state.status, state.savedAt]);
 
   if (state.status === "saving") {
-    return <span className="text-text-faint">Saving…</span>;
+    return <span className="text-xs text-text-faint">Saving…</span>;
   }
   if (state.status === "error") {
-    return <span className="text-red-600">Save failed</span>;
+    return <span className="text-xs text-danger">Save failed</span>;
   }
   if (state.status === "saved" && state.savedAt) {
     const elapsedMs = Date.now() - state.savedAt;
@@ -135,8 +135,8 @@ function SaveIndicator({ state }: { state: SaveState }) {
           ? `${Math.floor(elapsedMs / 1000)}s ago`
           : `${Math.floor(elapsedMs / 60000)}m ago`;
     return (
-      <span className="flex items-center gap-1 text-text-faint">
-        <Check className="h-3 w-3" />
+      <span className="flex items-center gap-1.5 text-xs text-text-faint">
+        <Check className="h-3 w-3 text-accent-2" />
         Saved {label}
       </span>
     );
@@ -632,18 +632,18 @@ function EditorSurface({
       />
       <main className="mx-auto max-w-[840px] px-12 pb-24 pt-20">
         <div className="mb-10 max-w-[680px]">
-          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-text-faint">
+          <div className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">
             <PencilLine className="h-3.5 w-3.5" />
             <span>{document.type.replace("_", " ")}</span>
-            <span className="ml-auto flex items-center gap-3 normal-case tracking-normal">
+            <span className="ml-auto flex items-center gap-4 font-sans normal-case tracking-normal">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="rounded-sm px-2 py-0.5 text-accent-hover hover:bg-accent-soft"
+                    className="rounded-sm px-2 py-0.5 text-xs text-accent transition-colors hover:bg-accent-soft"
                     title="Run a doc-level action"
                     type="button"
                   >
-                    ✨ Doc actions
+                    Doc actions
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -679,7 +679,7 @@ function EditorSurface({
               </DropdownMenu>
               <SaveIndicator state={saveState} />
               <button
-                className="rounded-sm px-2 py-0.5 text-text-muted hover:bg-surface-sunken hover:text-text"
+                className="rounded-sm px-2 py-0.5 text-xs text-text-muted transition-colors hover:bg-surface-sunken hover:text-text"
                 onClick={onSaveNow}
                 title="Save now (⌘S)"
                 type="button"
@@ -689,7 +689,7 @@ function EditorSurface({
             </span>
           </div>
           <input
-            className="w-full border-0 bg-transparent font-display text-5xl font-semibold leading-tight text-text outline-none placeholder:text-text-faint"
+            className="w-full border-0 border-b border-transparent bg-transparent pb-1 font-display text-[52px] font-normal leading-[1.05] tracking-tight text-text outline-none transition-colors placeholder:text-text-faint focus:border-border-strong"
             onChange={(event) => onTitleChange(event.target.value)}
             placeholder="Untitled"
             value={title}

@@ -3,41 +3,60 @@
 @tailwind utilities;
 
 :root {
-  /* Page — refined off-white. Warm enough to harmonize with the plum + forest
-     accents, low-chroma enough to recede so the marks land. */
-  --color-bg: #f7f4ed;
-  --color-bg-sidebar: #f7f4ed;
-  --color-surface: #fbfaf6;
-  --color-surface-sunken: #ece5d5;
+  /* Light writing surface — pale stone. Cool-warm balanced, zero beige,
+     low chroma so the deep plum and forest marks land cleanly. */
+  --color-bg: #f0f1ed;
+  --color-surface: #f6f6f2;
+  --color-surface-sunken: #e5e6e1;
 
-  /* Ink — warm dark text, never pure black */
-  --color-text: #1f1410;
-  --color-text-muted: #6b584a;
-  --color-text-faint: #a8917c;
+  /* Slate chrome — the architectural frame around the page. The sidebar
+     and any future chrome surfaces. Deep slate with a hair of warmth so
+     it doesn't read as tech-blue. */
+  --color-chrome: #2c353d;
+  --color-chrome-elev: #3a434c;
+  --color-chrome-sunken: #232a31;
+  --color-chrome-border: #404a53;
+  /* Sidebar is the canonical chrome surface */
+  --color-bg-sidebar: var(--color-chrome);
 
-  /* Borders — pulled to match the lower bg chroma */
-  --color-border: #dcd4c2;
-  --color-border-strong: #c8bda9;
+  /* Ink — warm graphite. Pulled from warm brown toward neutral so it
+     harmonizes with both the stone page and the slate chrome. */
+  --color-text: #1d2120;
+  --color-text-muted: #5e625f;
+  --color-text-faint: #9ca09c;
+
+  /* Light text — used on slate chrome. Warm bone, not pure white,
+     for a "paper against slate" rather than a "dashboard" read. */
+  --color-text-on-chrome: #e5e2d6;
+  --color-text-on-chrome-muted: #a6a99f;
+  --color-text-on-chrome-faint: #6a716d;
+
+  /* Borders — match the stone ground */
+  --color-border: #d5d7d2;
+  --color-border-strong: #b5b8b2;
 
   /* Primary accent — plum: the writer's ink */
   --color-accent: #4a1f2c;
   --color-accent-hover: #5e2839;
-  --color-accent-soft: #efe0da;
-  --color-accent-contrast: #fbfaf6;
+  --color-accent-soft: #e8ddd8;
+  --color-accent-contrast: #f6f6f2;
+  /* Brighter plum for marks on slate (active doc rule, etc.) */
+  --color-accent-on-chrome: #a8657a;
 
   /* Secondary accent — forest: Lexi's mark, the system's voice */
   --color-accent-2: #1f4a3d;
   --color-accent-2-hover: #285d4d;
-  --color-accent-2-soft: #d8e2da;
+  --color-accent-2-soft: #d4dbd2;
+  --color-accent-2-on-chrome: #6fa88e;
 
   /* Signals — in-palette */
   --color-danger: #8b2a2a;
   --color-success: #1f4a3d;
 
-  /* Shadows — warm-ink tints, generous blur, low opacity */
-  --shadow-sm: 0 1px 2px rgba(31, 20, 16, 0.05);
-  --shadow-md: 0 2px 14px rgba(31, 20, 16, 0.06);
-  --shadow-lg: 0 14px 36px rgba(31, 20, 16, 0.09);
+  /* Shadows — slate-tinted */
+  --shadow-sm: 0 1px 2px rgba(28, 32, 36, 0.05);
+  --shadow-md: 0 2px 14px rgba(28, 32, 36, 0.07);
+  --shadow-lg: 0 14px 36px rgba(28, 32, 36, 0.10);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -150,8 +169,8 @@ select {
   margin: 1.1em 0;
   padding: 10px 14px 10px 16px;
   border-left: 2px solid var(--color-accent-2);
-  background: rgba(31, 74, 61, 0.04);
-  color: rgba(31, 20, 16, 0.74);
+  background: rgba(31, 74, 61, 0.055);
+  color: rgba(29, 33, 32, 0.74);
   border-radius: 0 4px 4px 0;
 }
 

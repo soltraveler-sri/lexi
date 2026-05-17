@@ -32,22 +32,22 @@ export function DocumentRow({
   return (
     <div className="group relative flex items-center rounded-sm">
       <Link
-        className={`min-w-0 flex-1 rounded-sm px-2 py-1.5 text-sm transition-colors ${
+        className={`min-w-0 flex-1 rounded-sm border-l-2 px-2 py-1.5 text-sm transition-colors ${
           active
-            ? "bg-accent-soft text-text"
-            : "text-text-muted hover:bg-surface-sunken hover:text-text"
+            ? "border-accent-on-chrome bg-chrome-elev text-text-on-chrome"
+            : "border-transparent text-text-on-chrome-muted hover:bg-chrome-elev/60 hover:text-text-on-chrome"
         }`}
         href={`/workspace/${document.id}`}
       >
         <div className="truncate leading-snug">
           {document.title || "Untitled"}
         </div>
-        <div className="truncate text-[11px] tracking-wide text-text-faint">
+        <div className="truncate text-[11px] tracking-wide text-text-on-chrome-faint">
           {formatDate(document.updatedAt)}
         </div>
       </Link>
       <DropdownMenu>
-        <DropdownMenuTrigger className="absolute right-1 top-1 hidden h-7 w-7 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-surface hover:text-text group-hover:flex">
+        <DropdownMenuTrigger className="absolute right-1 top-1 hidden h-7 w-7 items-center justify-center rounded-sm text-text-on-chrome-faint transition-colors hover:bg-chrome-sunken hover:text-text-on-chrome group-hover:flex">
           <MoreHorizontal className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -63,17 +63,17 @@ export function Sidebar({
   const unsorted = documents.filter((document) => !document.projectId);
 
   return (
-    <aside className="flex h-screen w-[280px] shrink-0 flex-col border-r border-border bg-bg-sidebar">
+    <aside className="flex h-screen w-[280px] shrink-0 flex-col bg-chrome text-text-on-chrome">
       <div className="px-5 pb-4 pt-6">
         <Link
           aria-label="lexi — return to library"
           className="mb-7 inline-flex items-baseline gap-1.5"
           href="/workspace"
         >
-          <span className="font-display text-[30px] font-normal leading-none tracking-tight text-accent">
+          <span className="font-display text-[30px] font-normal leading-none tracking-tight text-text-on-chrome">
             lexi
           </span>
-          <span className="font-display text-[14px] italic leading-none text-text-faint">
+          <span className="font-display text-[14px] italic leading-none text-text-on-chrome-faint">
             n.
           </span>
         </Link>
@@ -98,18 +98,31 @@ export function Sidebar({
           project={null}
         />
       </div>
-      <footer className="flex items-center justify-between border-t border-border p-3">
-        <Button asChild size="icon" title="Journal" variant="ghost">
+      <footer className="flex items-center justify-between border-t border-chrome-border p-3">
+        <Button
+          asChild
+          className="text-text-on-chrome-muted hover:bg-chrome-elev hover:text-text-on-chrome"
+          size="icon"
+          title="Journal"
+          variant="ghost"
+        >
           <Link href="/journal/style-guide">
             <BookOpen className="h-4 w-4" />
           </Link>
         </Button>
-        <Button asChild size="icon" title="Settings" variant="ghost">
+        <Button
+          asChild
+          className="text-text-on-chrome-muted hover:bg-chrome-elev hover:text-text-on-chrome"
+          size="icon"
+          title="Settings"
+          variant="ghost"
+        >
           <Link href="/settings">
             <Settings className="h-4 w-4" />
           </Link>
         </Button>
         <Button
+          className="text-text-on-chrome-muted hover:bg-chrome-elev hover:text-text-on-chrome"
           onClick={() => void signOut()}
           size="icon"
           title="Sign out"

@@ -29,13 +29,13 @@ export function ProjectGroup({
   return (
     <section className="mb-4">
       <button
-        className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted transition-colors hover:text-text"
+        className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-text-on-chrome-muted transition-colors hover:text-text-on-chrome"
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
         <ChevronDown
           className={cn(
-            "h-3 w-3 text-text-faint transition-transform",
+            "h-3 w-3 text-text-on-chrome-faint transition-transform",
             !open && "-rotate-90",
           )}
         />

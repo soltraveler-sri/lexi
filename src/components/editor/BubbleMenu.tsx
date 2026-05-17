@@ -66,11 +66,11 @@ export function BubbleMenu({
 
   return (
     <TipTapBubbleMenu
-      className="flex flex-col gap-1"
+      className="flex flex-col gap-1.5"
       editor={editor}
       tippyOptions={{ duration: 100, placement: "top-start" }}
     >
-      <div className="flex items-center gap-1 rounded-md border border-border bg-surface p-1 shadow-md">
+      <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-1.5 shadow-md">
         <ToolButton
           active={shelfOpen}
           label="Transforms"
@@ -91,7 +91,7 @@ export function BubbleMenu({
         >
           <UserRoundCog className="h-4 w-4" />
         </ToolButton>
-        <span className="mx-1 h-5 w-px bg-border" />
+        <span className="mx-2 h-4 w-px bg-border-strong/60" />
         <ToolButton
           active={editor.isActive("bold")}
           label="Bold"
@@ -125,6 +125,7 @@ export function BubbleMenu({
         >
           <LinkIcon className="h-4 w-4" />
         </ToolButton>
+        <span className="mx-2 h-4 w-px bg-border-strong/60" />
         <ToolButton
           active={editor.isActive("heading", { level: 1 })}
           label="Heading 1"

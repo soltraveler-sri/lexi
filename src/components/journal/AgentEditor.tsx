@@ -214,7 +214,7 @@ export function AgentEditor({ agent }: { agent: AgentEditorState }) {
           onChange={(event) => setTestInput(event.target.value)}
           value={testInput}
         />
-        {testError ? <p className="text-sm text-red-600">{testError}</p> : null}
+        {testError ? <p className="text-sm text-danger">{testError}</p> : null}
         {testOutput ? (
           <pre className="whitespace-pre-wrap rounded-sm bg-surface-sunken p-3 text-sm">
             {testOutput}

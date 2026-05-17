@@ -16,16 +16,16 @@ export function JournalNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mt-6 flex flex-wrap gap-1 border-b border-border">
+    <nav className="mt-8 flex flex-wrap items-center gap-6 border-b border-border">
       {TABS.map((tab) => {
         const active = pathname?.startsWith(tab.href);
         return (
           <Link
             className={cn(
-              "rounded-t-sm px-3 py-2 text-sm transition",
+              "-mb-px border-b-2 pb-3 pt-1 text-sm transition-colors",
               active
-                ? "border-b-2 border-accent text-text"
-                : "text-text-muted hover:bg-surface-sunken hover:text-text",
+                ? "border-accent text-text"
+                : "border-transparent text-text-muted hover:border-border-strong hover:text-text",
             )}
             href={tab.href}
             key={tab.href}

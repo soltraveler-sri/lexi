@@ -129,7 +129,7 @@ export function AnalyzeEditsButton({ corpusSize }: { corpusSize: number }) {
               accepted rewrites…
             </p>
           ) : null}
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
           {!loading && candidates.length > 0 ? (
             <ul className="space-y-3">
               {candidates.map((state) => (

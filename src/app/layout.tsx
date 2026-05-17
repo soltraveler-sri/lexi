@@ -1,23 +1,34 @@
 import type { Metadata } from "next";
-import { Inter, Source_Serif_4 } from "next/font/google";
+import { Fraunces, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-ui",
-  display: "swap",
-});
-
-const sourceSerif = Source_Serif_4({
+const display = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+});
+
+const ui = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-ui",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Lexi",
-  description: "A personal writing application with a style-learning foundation.",
+  title: "Lexi — a writing workspace",
+  description:
+    "A private writing workspace that learns the lexicon of how you sound.",
 };
 
 export default function RootLayout({
@@ -26,7 +37,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className={`${inter.variable} ${sourceSerif.variable}`} lang="en">
+    <html
+      className={`${display.variable} ${ui.variable} ${mono.variable}`}
+      lang="en"
+    >
       <body>{children}</body>
     </html>
   );

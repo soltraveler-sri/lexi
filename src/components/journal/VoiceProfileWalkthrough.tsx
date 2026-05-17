@@ -422,7 +422,7 @@ export function VoiceProfileWalkthrough({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-red-600">{state.error ?? "Something went wrong."}</p>
+      <p className="text-sm text-danger">{state.error ?? "Something went wrong."}</p>
       <Button onClick={() => setState(initialState)} variant="secondary">
         Start over
       </Button>

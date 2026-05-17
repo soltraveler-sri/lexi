@@ -27,14 +27,17 @@ export function ProjectGroup({
   const [open, setOpen] = useState(true);
 
   return (
-    <section className="mb-3">
+    <section className="mb-4">
       <button
-        className="flex w-full items-center gap-1 rounded-sm px-2 py-1 text-left text-xs font-medium uppercase tracking-wide text-text-faint hover:bg-surface-sunken"
+        className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted transition-colors hover:text-text"
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
         <ChevronDown
-          className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")}
+          className={cn(
+            "h-3 w-3 text-text-faint transition-transform",
+            !open && "-rotate-90",
+          )}
         />
         <span className="truncate">{project?.name ?? "Unsorted"}</span>
       </button>

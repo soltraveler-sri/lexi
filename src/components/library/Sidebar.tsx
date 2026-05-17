@@ -64,12 +64,18 @@ export function Sidebar({
 
   return (
     <aside className="flex h-screen w-[280px] shrink-0 flex-col border-r border-border bg-bg-sidebar">
-      <div className="p-5">
-        <Link className="mb-6 flex items-center gap-2" href="/workspace">
-          <span className="font-display text-[28px] font-semibold leading-none">
+      <div className="px-5 pb-4 pt-6">
+        <Link
+          aria-label="lexi — return to library"
+          className="mb-7 inline-flex items-baseline gap-1.5"
+          href="/workspace"
+        >
+          <span className="font-display text-[30px] font-normal leading-none tracking-tight text-accent">
             lexi
           </span>
-          <span className="mt-1 h-2 w-2 rounded-full bg-accent" />
+          <span className="font-display text-[14px] italic leading-none text-text-faint">
+            n.
+          </span>
         </Link>
         <NewDocumentButton />
       </div>

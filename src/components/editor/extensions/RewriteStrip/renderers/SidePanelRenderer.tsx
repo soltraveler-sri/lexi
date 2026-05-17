@@ -45,7 +45,7 @@ function VariantPane({ variantKey }: { variantKey: VariantKey }) {
             <Loader2 className="h-3 w-3 animate-spin" /> drafting
           </span>
         ) : variant.status === "error" ? (
-          <span className="text-red-600">{variant.error || "AI unavailable"}</span>
+          <span className="text-danger">{variant.error || "AI unavailable"}</span>
         ) : null}
       </header>
       <textarea

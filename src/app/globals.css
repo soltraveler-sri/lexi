@@ -3,26 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Page — parchment and its warm derivatives */
-  --color-bg: #f2e6dc;
-  --color-bg-sidebar: #ead9c5;
-  --color-surface: #f8efe5;
-  --color-surface-sunken: #e8d7c2;
+  /* Page — refined off-white. Warm enough to harmonize with the plum + forest
+     accents, low-chroma enough to recede so the marks land. */
+  --color-bg: #f7f4ed;
+  --color-bg-sidebar: #f7f4ed;
+  --color-surface: #fbfaf6;
+  --color-surface-sunken: #ece5d5;
 
   /* Ink — warm dark text, never pure black */
   --color-text: #1f1410;
   --color-text-muted: #6b584a;
   --color-text-faint: #a8917c;
 
-  /* Borders — warm taupe drawn from the parchment */
-  --color-border: #d9c7b3;
-  --color-border-strong: #c2ac93;
+  /* Borders — pulled to match the lower bg chroma */
+  --color-border: #dcd4c2;
+  --color-border-strong: #c8bda9;
 
   /* Primary accent — plum: the writer's ink */
   --color-accent: #4a1f2c;
   --color-accent-hover: #5e2839;
-  --color-accent-soft: #ebdad5;
-  --color-accent-contrast: #f8efe5;
+  --color-accent-soft: #efe0da;
+  --color-accent-contrast: #fbfaf6;
 
   /* Secondary accent — forest: Lexi's mark, the system's voice */
   --color-accent-2: #1f4a3d;

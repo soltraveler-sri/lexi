@@ -24,7 +24,7 @@ export default async function WorkspaceLayout({
   ]);
 
   return (
-    <div className="flex min-h-screen bg-bg text-text">
+    <div className="flex min-h-screen items-start bg-bg text-text">
       <Sidebar
         documents={documents.map((document) => ({
           id: document.id,

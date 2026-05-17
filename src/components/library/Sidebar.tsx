@@ -63,7 +63,7 @@ export function Sidebar({
   const unsorted = documents.filter((document) => !document.projectId);
 
   return (
-    <aside className="flex h-screen w-[280px] shrink-0 flex-col bg-chrome text-text-on-chrome">
+    <aside className="sticky top-0 flex h-screen w-[280px] shrink-0 flex-col bg-chrome text-text-on-chrome">
       <div className="px-5 pb-4 pt-6">
         <Link
           aria-label="lexi — return to library"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronDown,
   CornerDownLeft,
@@ -57,10 +57,9 @@ export function InlineComposer({
   const [text, setText] = useState("");
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
+  // Note: deliberately no auto-focus. The composer is always-visible when
+  // the bubble menu is shown, so we leave focus on the editor so formatting
+  // hotkeys (Cmd+B etc.) still work. User clicks the textarea to type.
 
   function submit() {
     const trimmed = text.trim();

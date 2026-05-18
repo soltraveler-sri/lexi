@@ -3,43 +3,42 @@
 @tailwind utilities;
 
 :root {
-  /* Page — cool pale linen. Slight green undertone harmonizes with the
-     forest mark; deliberately *not* in the warm cream/parchment family. */
-  --color-bg: #ebeeea;
+  /* Page — cool slate-blue, "blueprint paper." Visibly bluer than the
+     previous linen so the shift reads, harmonizes with ink-blue via
+     shared family. */
+  --color-bg: #dde3ea;
   --color-bg-sidebar: var(--color-bg);
-  --color-surface: #f3f5f0;
-  --color-surface-sunken: #dcdfd9;
+  --color-surface: #e8ecf2;
+  --color-surface-sunken: #cfd6de;
 
-  /* Ink — charcoal with green undertone */
-  --color-text: #181c1a;
-  --color-text-muted: #585d58;
-  --color-text-faint: #969a96;
+  /* Ink — charcoal with slight blue undertone, to harmonize with bg */
+  --color-text: #15191e;
+  --color-text-muted: #52575e;
+  --color-text-faint: #909499;
 
-  /* Borders — match the linen ground */
-  --color-border: #cfd3ce;
-  --color-border-strong: #a8ada6;
+  /* Borders — match the slate ground */
+  --color-border: #c7ced5;
+  --color-border-strong: #a0a7af;
 
   /* USER MARK — forest. The writer's mark. */
   --color-accent: #1f4a3d;
   --color-accent-hover: #2a5d4c;
-  --color-accent-soft: #d5ddd6;
-  --color-accent-contrast: #f3f5f0;
+  --color-accent-soft: #d4ddd5;
+  --color-accent-contrast: #e8ecf2;
 
-  /* LEXI MARK — ink-blue. The system's voice. Hue-adjacent to forest
-     (both cool, both deep) so they read as a coherent ink set rather
-     than the previous plum-vs-forest clash. */
+  /* LEXI MARK — ink-blue. The system's voice. */
   --color-accent-2: #2a3552;
   --color-accent-2-hover: #384469;
-  --color-accent-2-soft: #d6dae3;
+  --color-accent-2-soft: #c8d0dc;
 
   /* Signals — in-palette */
   --color-danger: #8b2a2a;
   --color-success: #1f4a3d;
 
-  /* Shadows — graphite tints */
-  --shadow-sm: 0 1px 2px rgba(24, 28, 26, 0.05);
-  --shadow-md: 0 2px 14px rgba(24, 28, 26, 0.07);
-  --shadow-lg: 0 14px 36px rgba(24, 28, 26, 0.10);
+  /* Shadows — blue-tinted graphite */
+  --shadow-sm: 0 1px 2px rgba(21, 25, 30, 0.05);
+  --shadow-md: 0 2px 14px rgba(21, 25, 30, 0.07);
+  --shadow-lg: 0 14px 36px rgba(21, 25, 30, 0.10);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -153,7 +152,7 @@ select {
   padding: 10px 56px 10px 16px;
   border-left: 2px solid var(--color-accent-2);
   background: rgba(42, 53, 82, 0.05);
-  color: rgba(24, 28, 26, 0.74);
+  color: rgba(21, 25, 30, 0.74);
   border-radius: 0 4px 4px 0;
 }
 

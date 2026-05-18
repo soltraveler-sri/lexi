@@ -3,42 +3,43 @@
 @tailwind utilities;
 
 :root {
-  /* Page — pale stone. Cool-warm balanced, zero beige, low chroma. */
-  --color-bg: #f0f1ed;
+  /* Page — cool pale linen. Slight green undertone harmonizes with the
+     forest mark; deliberately *not* in the warm cream/parchment family. */
+  --color-bg: #ebeeea;
   --color-bg-sidebar: var(--color-bg);
-  --color-surface: #f6f6f2;
-  --color-surface-sunken: #e5e6e1;
+  --color-surface: #f3f5f0;
+  --color-surface-sunken: #dcdfd9;
 
-  /* Ink — warm graphite */
-  --color-text: #1d2120;
-  --color-text-muted: #5e625f;
-  --color-text-faint: #9ca09c;
+  /* Ink — charcoal with green undertone */
+  --color-text: #181c1a;
+  --color-text-muted: #585d58;
+  --color-text-faint: #969a96;
 
-  /* Borders — match the stone ground */
-  --color-border: #d5d7d2;
-  --color-border-strong: #b5b8b2;
+  /* Borders — match the linen ground */
+  --color-border: #cfd3ce;
+  --color-border-strong: #a8ada6;
 
-  /* USER MARK — forest. The writer's mark.
-     (Swapped from plum per the latest iteration.) */
+  /* USER MARK — forest. The writer's mark. */
   --color-accent: #1f4a3d;
-  --color-accent-hover: #285d4d;
-  --color-accent-soft: #d6dfd9;
-  --color-accent-contrast: #f6f6f2;
+  --color-accent-hover: #2a5d4c;
+  --color-accent-soft: #d5ddd6;
+  --color-accent-contrast: #f3f5f0;
 
-  /* LEXI MARK — plum. The system's voice.
-     (Swapped from forest.) */
-  --color-accent-2: #4a1f2c;
-  --color-accent-2-hover: #5e2839;
-  --color-accent-2-soft: #ecdcd6;
+  /* LEXI MARK — ink-blue. The system's voice. Hue-adjacent to forest
+     (both cool, both deep) so they read as a coherent ink set rather
+     than the previous plum-vs-forest clash. */
+  --color-accent-2: #2a3552;
+  --color-accent-2-hover: #384469;
+  --color-accent-2-soft: #d6dae3;
 
   /* Signals — in-palette */
   --color-danger: #8b2a2a;
   --color-success: #1f4a3d;
 
-  /* Shadows — graphite tints, generous blur, low opacity */
-  --shadow-sm: 0 1px 2px rgba(29, 33, 32, 0.05);
-  --shadow-md: 0 2px 14px rgba(29, 33, 32, 0.07);
-  --shadow-lg: 0 14px 36px rgba(29, 33, 32, 0.10);
+  /* Shadows — graphite tints */
+  --shadow-sm: 0 1px 2px rgba(24, 28, 26, 0.05);
+  --shadow-md: 0 2px 14px rgba(24, 28, 26, 0.07);
+  --shadow-lg: 0 14px 36px rgba(24, 28, 26, 0.10);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -151,8 +152,8 @@ select {
   margin: 1.1em 0;
   padding: 10px 56px 10px 16px;
   border-left: 2px solid var(--color-accent-2);
-  background: rgba(74, 31, 44, 0.05);
-  color: rgba(29, 33, 32, 0.74);
+  background: rgba(42, 53, 82, 0.05);
+  color: rgba(24, 28, 26, 0.74);
   border-radius: 0 4px 4px 0;
 }
 

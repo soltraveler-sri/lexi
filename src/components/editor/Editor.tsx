@@ -288,6 +288,20 @@ function EditorSurface({
     runTransform(rewrite, {});
   }, [beginFromSelection, runTransform]);
 
+  const runManualEdit = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      const { from, to, empty } = editor.state.selection;
+      if (empty || from === to) return;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, text)
+        .run();
+    },
+    [editor],
+  );
+
   const runInlineTransform = useCallback(
     (transformId: string, parameters?: Record<string, unknown>) => {
       const transform = getTransform(transformId);
@@ -707,6 +721,7 @@ function EditorSurface({
             <BubbleMenu
               agents={agents}
               editor={editor}
+              onManualEdit={runManualEdit}
               onRunAgent={runAgentOnSelection}
               onRunTransform={runTransform}
             />

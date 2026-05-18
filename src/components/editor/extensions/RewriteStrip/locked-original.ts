@@ -1,4 +1,7 @@
 import { mergeAttributes, Node } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+
+import { LockedOriginalView } from "@/components/editor/extensions/RewriteStrip/LockedOriginalView";
 
 export const LockedOriginal = Node.create({
   name: "lockedOriginal",
@@ -31,5 +34,9 @@ export const LockedOriginal = Node.create({
       }),
       HTMLAttributes.text,
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(LockedOriginalView);
   },
 });

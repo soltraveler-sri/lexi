@@ -3,60 +3,42 @@
 @tailwind utilities;
 
 :root {
-  /* Light writing surface — pale stone. Cool-warm balanced, zero beige,
-     low chroma so the deep plum and forest marks land cleanly. */
+  /* Page — pale stone. Cool-warm balanced, zero beige, low chroma. */
   --color-bg: #f0f1ed;
+  --color-bg-sidebar: var(--color-bg);
   --color-surface: #f6f6f2;
   --color-surface-sunken: #e5e6e1;
 
-  /* Slate chrome — the architectural frame around the page. The sidebar
-     and any future chrome surfaces. Deep slate with a hair of warmth so
-     it doesn't read as tech-blue. */
-  --color-chrome: #2c353d;
-  --color-chrome-elev: #3a434c;
-  --color-chrome-sunken: #232a31;
-  --color-chrome-border: #404a53;
-  /* Sidebar is the canonical chrome surface */
-  --color-bg-sidebar: var(--color-chrome);
-
-  /* Ink — warm graphite. Pulled from warm brown toward neutral so it
-     harmonizes with both the stone page and the slate chrome. */
+  /* Ink — warm graphite */
   --color-text: #1d2120;
   --color-text-muted: #5e625f;
   --color-text-faint: #9ca09c;
-
-  /* Light text — used on slate chrome. Warm bone, not pure white,
-     for a "paper against slate" rather than a "dashboard" read. */
-  --color-text-on-chrome: #e5e2d6;
-  --color-text-on-chrome-muted: #a6a99f;
-  --color-text-on-chrome-faint: #6a716d;
 
   /* Borders — match the stone ground */
   --color-border: #d5d7d2;
   --color-border-strong: #b5b8b2;
 
-  /* Primary accent — plum: the writer's ink */
-  --color-accent: #4a1f2c;
-  --color-accent-hover: #5e2839;
-  --color-accent-soft: #e8ddd8;
+  /* USER MARK — forest. The writer's mark.
+     (Swapped from plum per the latest iteration.) */
+  --color-accent: #1f4a3d;
+  --color-accent-hover: #285d4d;
+  --color-accent-soft: #d6dfd9;
   --color-accent-contrast: #f6f6f2;
-  /* Brighter plum for marks on slate (active doc rule, etc.) */
-  --color-accent-on-chrome: #a8657a;
 
-  /* Secondary accent — forest: Lexi's mark, the system's voice */
-  --color-accent-2: #1f4a3d;
-  --color-accent-2-hover: #285d4d;
-  --color-accent-2-soft: #d4dbd2;
-  --color-accent-2-on-chrome: #6fa88e;
+  /* LEXI MARK — plum. The system's voice.
+     (Swapped from forest.) */
+  --color-accent-2: #4a1f2c;
+  --color-accent-2-hover: #5e2839;
+  --color-accent-2-soft: #ecdcd6;
 
   /* Signals — in-palette */
   --color-danger: #8b2a2a;
   --color-success: #1f4a3d;
 
-  /* Shadows — slate-tinted */
-  --shadow-sm: 0 1px 2px rgba(28, 32, 36, 0.05);
-  --shadow-md: 0 2px 14px rgba(28, 32, 36, 0.07);
-  --shadow-lg: 0 14px 36px rgba(28, 32, 36, 0.10);
+  /* Shadows — graphite tints, generous blur, low opacity */
+  --shadow-sm: 0 1px 2px rgba(29, 33, 32, 0.05);
+  --shadow-md: 0 2px 14px rgba(29, 33, 32, 0.07);
+  --shadow-lg: 0 14px 36px rgba(29, 33, 32, 0.10);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -160,18 +142,48 @@ select {
 }
 
 /*
- * locked-original-node — the system marker for "Lexi is editing this block."
- * Concept: a clear-but-quiet left rule + a barely-tinted ground.
- * Color: forest (accent-2) signals "Lexi's mark" — distinct from the plum
- * the writer uses for their own emphasis.
+ * locked-original-node — Lexi's mark on "I'm editing this block."
+ * Plum left rule + barely-tinted ground. The React NodeView renders an
+ * always-visible cancel pill at the top-right (see LockedOriginal).
  */
 .locked-original-node {
+  position: relative;
   margin: 1.1em 0;
-  padding: 10px 14px 10px 16px;
+  padding: 10px 56px 10px 16px;
   border-left: 2px solid var(--color-accent-2);
-  background: rgba(31, 74, 61, 0.055);
+  background: rgba(74, 31, 44, 0.05);
   color: rgba(29, 33, 32, 0.74);
   border-radius: 0 4px 4px 0;
+}
+
+.locked-original-cancel {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.locked-original-cancel:hover {
+  opacity: 1;
+  color: var(--color-accent-2);
+  border-color: var(--color-accent-2);
 }
 
 .lexi-editor .ProseMirror ul,
@@ -191,7 +203,7 @@ select {
 .lexi-editor .ProseMirror a {
   color: var(--color-accent);
   text-decoration: underline;
-  text-decoration-color: rgba(74, 31, 44, 0.45);
+  text-decoration-color: rgba(31, 74, 61, 0.45);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
@@ -209,11 +221,11 @@ select {
   margin-top: 8px;
 }
 
-/* Exemplar mark — the writer's own annotation, plum at low intensity */
+/* Exemplar mark — the writer's own annotation, forest at low intensity */
 .exemplar-mark {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
-  text-decoration-color: rgba(74, 31, 44, 0.32);
+  text-decoration-color: rgba(31, 74, 61, 0.32);
   text-underline-offset: 4px;
 }
 

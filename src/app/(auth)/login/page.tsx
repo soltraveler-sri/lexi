@@ -31,7 +31,7 @@ function LoginContent() {
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">
           A writing workspace
         </p>
-        <h1 className="mt-3 inline-flex items-baseline gap-2 font-display text-[88px] font-normal leading-none tracking-tight text-accent">
+        <h1 className="mt-3 inline-flex items-baseline gap-2 font-display text-[88px] font-normal leading-none tracking-tight text-accent-2">
           lexi
           <span className="font-display text-[22px] italic font-normal text-text-faint">
             n.

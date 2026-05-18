@@ -13,12 +13,13 @@ import {
   List,
   ListOrdered,
   Quote,
-  UserRoundCog,
   Wand2,
 } from "lucide-react";
 
-import { AgentPickerMenu } from "@/components/editor/AgentPickerMenu";
-import { TransformShelf } from "@/components/editor/TransformShelf";
+import {
+  InlineComposer,
+  type ComposerAgent,
+} from "@/components/editor/InlineComposer";
 import { Button } from "@/components/ui/button";
 import type { AgentListItem } from "@/components/journal/AgentsRoster";
 import type { Transform } from "@/lib/transforms/types";
@@ -55,14 +56,16 @@ export function BubbleMenu({
   onRunTransform,
   agents,
   onRunAgent,
+  onManualEdit,
 }: {
   editor: Editor;
   onRunTransform: (transform: Transform, parameters: Record<string, string>) => void;
   agents: AgentListItem[];
   onRunAgent: (agent: AgentListItem) => void;
+  onManualEdit: (text: string) => void;
 }) {
-  const [shelfOpen, setShelfOpen] = useState(false);
-  const [agentsOpen, setAgentsOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<ComposerAgent>(null);
 
   return (
     <TipTapBubbleMenu
@@ -72,24 +75,11 @@ export function BubbleMenu({
     >
       <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-1.5 shadow-md">
         <ToolButton
-          active={shelfOpen}
-          label="Transforms"
-          onClick={() => {
-            setShelfOpen((open) => !open);
-            setAgentsOpen(false);
-          }}
+          active={composerOpen}
+          label="Rewrite or message Lexi"
+          onClick={() => setComposerOpen((open) => !open)}
         >
           <Wand2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          active={agentsOpen}
-          label="Run with agent"
-          onClick={() => {
-            setAgentsOpen((open) => !open);
-            setShelfOpen(false);
-          }}
-        >
-          <UserRoundCog className="h-4 w-4" />
         </ToolButton>
         <span className="mx-2 h-4 w-px bg-border-strong/60" />
         <ToolButton
@@ -169,18 +159,15 @@ export function BubbleMenu({
           <Quote className="h-4 w-4" />
         </ToolButton>
       </div>
-      {shelfOpen ? (
-        <TransformShelf
-          onClose={() => setShelfOpen(false)}
-          onRun={onRunTransform}
-        />
-      ) : null}
-      {agentsOpen ? (
-        <AgentPickerMenu
+      {composerOpen ? (
+        <InlineComposer
           agents={agents}
-          onClose={() => setAgentsOpen(false)}
-          onPick={onRunAgent}
-          scopeLabel="selection"
+          onClose={() => setComposerOpen(false)}
+          onManualEdit={onManualEdit}
+          onRunAgent={onRunAgent}
+          onRunTransform={onRunTransform}
+          onSelectAgent={setSelectedAgent}
+          selectedAgent={selectedAgent}
         />
       ) : null}
     </TipTapBubbleMenu>
